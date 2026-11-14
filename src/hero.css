@@ -1,0 +1,363 @@
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+
+/* ===================================================================
+   Hero: one watch, one sentence, one slow opening sequence.
+
+   Composition (desktop)
+     - headline, one sentence of copy and two actions centred on the axis
+     - the watch rises from the bottom edge directly beneath them; its top
+       dissolves into black so the buttons sit on the strap, not on a box
+     - a hairline bar closes the frame: service facts left, scroll cue right
+
+   Opening sequence (transform / opacity only)
+     0.10s  black veil lifts, slowly
+     0.15s  watch fades up and settles upward from a slight over-scale
+     1.15s  headline, line by line, rising out of a mask (0.18s apart)
+     1.90s  supporting copy
+     2.05s  actions
+     2.30s  closing bar, hairline draws across
+     3.00s  one glint of light crosses the case
+   After that: restrained pointer parallax (fine pointers only) and a slow
+   drift / dim of the watch as the page scrolls away.
+   =================================================================== */
+
+.hx{
+  /* colours come from the site's own theme tokens (:root / [data-theme=dark]) */
+  --hx-ink:var(--bg);
+  --hx-ivory:var(--ink);
+  --hx-ivory-dim:color-mix(in srgb,var(--ink) 70%,transparent);
+  --hx-line:color-mix(in srgb,var(--ink) 16%,transparent);
+  --hx-gold:var(--gold);
+  --hx-gold-soft:#8f7440;
+  --hx-ease:cubic-bezier(.16,1,.3,1);
+  --hx-fade:cubic-bezier(.4,0,.2,1);
+  --hx-serif:'Instrument Serif','Cormorant Garamond',Georgia,serif;
+
+  position:relative;isolation:isolate;overflow:hidden;display:flex;
+  background:var(--hx-ink);color:var(--hx-ivory);
+  min-height:clamp(760px,calc(100vh - 56px),1000px)
+}
+[data-theme=dark] .hx{--hx-gold-soft:#d3c1a0}
+@supports(height:100svh){.hx{min-height:clamp(760px,calc(100svh - 56px),1000px)}}
+
+/* ---------- the watch ---------- */
+.hx-plate{
+  position:absolute;z-index:0;left:0;right:0;bottom:0;margin-inline:auto;
+  width:min(1240px,100%);height:80%;
+  transform-origin:50% 70%;will-change:transform,opacity;overflow:hidden;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 40%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 40%)
+}
+.hx-ph{position:absolute;inset:-3%;will-change:transform}
+.hx-ph img{
+  display:block;width:100%;height:100%;object-fit:cover;object-position:var(--hx-pos,50% 60%);
+  filter:brightness(.95) contrast(1.05) saturate(.85);
+  opacity:0;transform:scale(1.06) translate3d(0,2.5%,0)
+}
+/* opacity and settle run on their own clocks: a slow fade, and a longer rise into place */
+.is-in .hx-ph img{
+  animation:hx-plate-fade 2.6s var(--hx-fade) .15s both,hx-plate-settle 3.6s var(--hx-ease) .15s both
+}
+@keyframes hx-plate-fade{from{opacity:0}to{opacity:1}}
+@keyframes hx-plate-settle{from{transform:scale(1.06) translate3d(0,2.5%,0)}to{transform:none}}
+
+/* legibility + depth: a dark pool behind the type, side vignette, bottom seam, a faint warm light on the case */
+.hx-shade{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(55% 34% at 50% 26%,color-mix(in srgb,var(--hx-ink) 62%,transparent),transparent 100%),
+    linear-gradient(0deg,var(--hx-ink) 0,color-mix(in srgb,var(--hx-ink) 70%,transparent) 11%,transparent 34%),
+    linear-gradient(180deg,color-mix(in srgb,var(--hx-ink) 60%,transparent),transparent 20%),
+    radial-gradient(75% 85% at 50% 62%,transparent 42%,color-mix(in srgb,var(--hx-ink) 88%,transparent) 100%),
+    radial-gradient(34% 40% at 50% 74%,rgba(240,225,190,.05),transparent 100%)
+}
+/* fixed grain, no animation: texture without cost */
+.hx-grain{
+  position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")
+}
+[data-theme=dark] .hx-grain{opacity:.07}
+
+/* one pass of light across the case, once, after everything has landed.
+   It lives inside the plate, so it is cropped to the watch and fades with it. */
+.hx-glint{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.hx-glint::before{
+  content:"";position:absolute;top:0;bottom:0;left:-40%;width:40%;opacity:0;
+  background:linear-gradient(100deg,transparent,rgba(236,222,190,.1),transparent);
+  transform:translate3d(0,0,0) skewX(-12deg)
+}
+.is-in .hx-glint::before{animation:hx-glint 2.8s cubic-bezier(.45,0,.2,1) 3s both}
+@keyframes hx-glint{
+  0%{opacity:0;transform:translate3d(0,0,0) skewX(-12deg)}
+  15%,85%{opacity:1}
+  100%{opacity:0;transform:translate3d(350%,0,0) skewX(-12deg)}
+}
+
+/* opening frame: starts fully dark, lifts gently */
+.hx-veil{position:absolute;inset:0;z-index:3;background:var(--hx-ink);pointer-events:none}
+.is-in .hx-veil{animation:hx-veil 1.8s var(--hx-fade) .1s forwards}
+@keyframes hx-veil{to{opacity:0;visibility:hidden}}
+
+/* ---------- content ---------- */
+.hx-in{
+  position:relative;z-index:4;width:100%;display:flex;flex-direction:column;justify-content:space-between;
+  padding-top:clamp(36px,7vh,84px);will-change:transform,opacity
+}
+.hx-r{opacity:0}
+.is-in .hx-r{animation:hx-rise 1.3s var(--hx-ease) var(--d,0s) both}
+@keyframes hx-rise{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+@keyframes hx-draw{to{transform:scaleX(1)}}
+
+.hx-copy{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+@media(hover:hover) and (pointer:fine){.hx-copy{will-change:transform}}
+
+/* headline: each line rises out of its own mask. Real text is in .hx-sr for screen readers. */
+.hx-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.hx-h1{
+  margin:0;font-family:var(--hx-serif);font-weight:400;
+  font-size:clamp(56px,min(9.6vw,15.5vh),148px);line-height:.94;letter-spacing:-.03em;
+  color:var(--hx-ivory);font-kerning:normal;font-feature-settings:"kern","liga"
+}
+.hx-line{display:block;overflow:hidden;white-space:nowrap;padding:.05em .12em .15em;margin:-.05em -.12em -.15em}
+.hx-line>span{display:block;transform:translate3d(0,112%,0)}
+.is-in .hx-line>span{animation:hx-line 1.5s var(--hx-ease) both;animation-delay:calc(1.15s + var(--i)*.18s)}
+@keyframes hx-line{from{transform:translate3d(0,112%,0)}to{transform:none}}
+/* the italic is set a touch tighter than the roman so the two lines read as one voice */
+.hx-em{font-style:italic;letter-spacing:-.035em;color:var(--hx-gold-soft)}
+
+.hx-lead{--d:1.9s;max-width:430px;margin:26px 0 32px;font-size:15.5px;line-height:1.7;color:var(--hx-ivory-dim)}
+
+.hx-cta{--d:2.05s;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px}
+.hx-btn{
+  position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:16px;
+  height:52px;padding:0 28px;border-radius:980px;border:1px solid transparent;
+  font-size:15px;font-weight:500;letter-spacing:.005em;white-space:nowrap;
+  transition:color .5s var(--hx-ease),border-color .4s,background-color .5s var(--hx-ease),box-shadow .5s var(--hx-ease),transform .35s var(--hx-ease)
+}
+/* primary: solid pill in the site's inverse colour; champagne rises through it on hover */
+.hx-pri{background:var(--inv);color:var(--invt)}
+.hx-pri::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--hx-gold);transform:translate3d(0,101%,0);transition:transform .6s var(--hx-ease)}
+/* secondary: hairline pill over a soft dark glass */
+.hx-sec{background:color-mix(in srgb,var(--hx-ink) 45%,transparent);border-color:color-mix(in srgb,var(--ink) 28%,transparent);color:var(--hx-ivory);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hx-arrow{width:30px;height:10px;flex:none;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .6s var(--hx-ease)}
+
+/* keyboard focus: visible on both themes, same gold as the hover state */
+.hx-btn:focus-visible,.hx-scroll:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.hx-pri:focus-visible{color:#151515}
+.hx-pri:focus-visible::before{transform:none}
+.hx-pri:focus-visible .hx-arrow{transform:translate3d(5px,0,0)}
+.hx-sec:focus-visible{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+.hx-btn:active{transform:scale(.985)}
+@media(hover:hover){
+  .hx-pri:hover{color:#151515;box-shadow:0 12px 30px color-mix(in srgb,var(--gold) 35%,transparent)}
+  .hx-pri:hover::before{transform:none}
+  .hx-pri:hover .hx-arrow{transform:translate3d(5px,0,0)}
+  .hx-sec:hover{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+}
+
+/* closing bar: hairline with a gold rule that draws once */
+.hx-bar{--d:2.3s;position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:32px;border-top:1px solid var(--hx-line)}
+.hx-bar::before{content:"";position:absolute;left:0;top:-1px;height:1px;width:100%;background:linear-gradient(90deg,var(--hx-gold),rgba(181,156,112,0) 60%);transform-origin:left;transform:scaleX(0)}
+.is-in .hx-bar::before{animation:hx-draw 1.8s var(--hx-ease) 2.4s both}
+.hx-facts{display:flex;gap:48px}
+.hx-facts>div{display:grid;gap:4px;padding:22px 0 28px;font-size:13px;color:var(--hx-ivory-dim)}
+.hx-facts b{font-weight:500;font-size:14px;color:var(--hx-ivory)}
+
+.hx-scroll{
+  display:inline-flex;align-items:center;gap:14px;padding:22px 0 28px;background:none;border:0;cursor:pointer;
+  font:inherit;font-size:13px;color:var(--hx-ivory-dim);transition:color .4s
+}
+.hx-scroll i{display:block;width:44px;height:1px;background:currentColor;transform-origin:left;transition:transform .6s var(--hx-ease)}
+@media(hover:hover){
+  .hx-scroll:hover{color:var(--hx-ivory)}
+  .hx-scroll:hover i{transform:scaleX(1.5)}
+}
+
+/* ---------- tablet and phone ---------- */
+@media(max-width:1000px){
+  .hx{min-height:clamp(700px,calc(100svh - 56px),900px)}
+  .hx-plate{height:74%}
+  .hx-in{padding-top:36px}
+  .hx-glint{display:none}
+  .hx-facts{gap:28px}
+}
+@media(max-width:700px){
+  .hx-h1{font-size:clamp(52px,16.5vw,96px)}
+  .hx-lead{max-width:340px;margin:22px 0 26px;font-size:15px;line-height:1.65}
+  .hx-cta{width:100%;max-width:380px}
+  .hx-pri{flex:1 1 auto;justify-content:space-between}
+  .hx-sec{flex:0 0 auto}
+  .hx-bar{display:block}
+  .hx-scroll{display:none}
+  .hx-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .hx-facts>div{padding:16px 0 22px;font-size:12px}
+  .hx-facts b{font-size:12.5px;line-height:1.3}
+  .hx-facts span{display:none}
+  /* shorter sequence on phones: same order, less waiting */
+  .is-in .hx-veil{animation-duration:1.3s}
+  .is-in .hx-line>span{animation-delay:calc(.9s + var(--i)*.16s)}
+  .hx-lead{--d:1.5s}
+  .hx-cta{--d:1.65s}
+  .hx-bar{--d:1.9s}
+  .is-in .hx-bar::before{animation-delay:2s}
+}
+
+/* ---------- reduced motion: everything present, nothing moves ---------- */
+@media(prefers-reduced-motion:reduce){
+  .hx-veil,.hx-glint{display:none}
+  .hx-ph img{opacity:1;transform:none;animation:none!important}
+  .hx-line>span{transform:none;animation:none!important}
+  .hx-r{opacity:1;animation:none!important}
+  .hx-bar::before{transform:none;animation:none!important}
+  .hx-pri::before,.hx-btn,.hx-arrow,.hx-scroll,.hx-scroll i{transition:none}
+  .hx-btn:active{transform:none}
+}
+/* =====================================================================
+   v2: full-screen hero, centred stack, watch beneath the buttons,
+   transparent floating header (home page only, via :has(.hx))
+   ===================================================================== */
+
+/* ---------- full screen: promo bar (~39px) + hero = exactly one viewport ---------- */
+.hx{min-height:max(640px,calc(100vh - 39px))}
+@supports(height:100svh){.hx{min-height:max(640px,calc(100svh - 39px))}}
+
+/* header floats over the hero (hero slides up beneath it) */
+body:has(.hx) header{
+  margin-bottom:-64px;background:transparent;border-bottom:1px solid transparent;
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none
+}
+/* once the page scrolls, the header gets its frosted background back so it stays legible */
+body:has(.hx) header.scrolled,body:has(.hx) header.mopen{
+  background:var(--nav);border-bottom-color:var(--line);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)
+}
+/* wider gutters, like the reference: logo and actions sit near the edges */
+body:has(.hx) header .wrap,.hx .hx-in.wrap{max-width:none;--pad:clamp(20px,4vw,56px)}
+body:has(.hx) .logo{font-size:24px;font-weight:500}
+
+@media(min-width:901px){
+  body:has(.hx) .nav{position:relative;height:84px}
+  body:has(.hx) header.scrolled .nav{height:64px}
+  /* links truly centred on the page axis */
+  body:has(.hx) .links{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);gap:34px}
+  body:has(.hx) .links a:after{display:none}
+  body:has(.hx) .links a{color:var(--hx-ivory-dim,var(--mute))}
+  body:has(.hx) .links a:hover,body:has(.hx) .links a.active,body:has(.hx) .links a.on{color:var(--ink)}
+  /* right-hand icons grouped in one dark pill, like the "Get Started" button */
+  body:has(.hx) .nav>:last-child{
+    display:flex;align-items:center;gap:2px;height:46px;padding:0 10px;border-radius:980px;
+    background:color-mix(in srgb,var(--ink) 11%,transparent);
+    border:1px solid color-mix(in srgb,var(--ink) 10%,transparent)
+  }
+}
+
+/* ---------- composition: type on top, watch rising beneath the buttons ---------- */
+.hx-in{padding-top:clamp(96px,15vh,170px)}
+.hx-h1{font-size:clamp(48px,min(7.6vw,12.5vh),122px);line-height:.98}
+.hx-lead{max-width:560px;margin:22px 0 28px;font-size:14.5px;line-height:1.65}
+.hx-btn{height:46px;padding:0 26px;font-size:14px}
+
+/* the watch: wide plate, dissolves on top AND on both sides (no visible box edges) */
+.hx-plate{
+  width:min(1500px,100%);height:58%;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 32%),linear-gradient(90deg,transparent 0,#000 20%,#000 80%,transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(180deg,transparent 0,#000 32%),linear-gradient(90deg,transparent 0,#000 20%,#000 80%,transparent 100%);
+  mask-composite:intersect
+}
+/* lighter dark pool: the text no longer sits on the watch, so the watch can stay bright */
+.hx-shade{
+  background:
+    linear-gradient(0deg,var(--hx-ink) 0,color-mix(in srgb,var(--hx-ink) 65%,transparent) 9%,transparent 28%),
+    linear-gradient(180deg,color-mix(in srgb,var(--hx-ink) 70%,transparent),transparent 22%),
+    radial-gradient(80% 90% at 50% 70%,transparent 45%,color-mix(in srgb,var(--hx-ink) 85%,transparent) 100%)
+}
+
+@media(max-width:1000px){
+  .hx-plate{height:52%}
+  .hx-in{padding-top:clamp(88px,13vh,130px)}
+}
+@media(max-width:700px){
+  .hx-h1{font-size:clamp(46px,14.5vw,84px)}
+  .hx-plate{height:46%;width:100%}
+}
+/* headline on one row: "Time," + "well kept." */
+.hx-h1{
+  display:flex;justify-content:center;align-items:baseline;gap:.2em;white-space:nowrap;
+  font-size:clamp(44px,min(8.6vw,13.5vh),136px);line-height:1
+}
+/* one row is shorter, so push the copy down a bit to keep the buttons where they were */
+.hx-in{padding-top:clamp(110px,23vh,250px)}
+
+/* footer: facts spread across the full width, evenly spaced, "Scroll" pinned right */
+.hx-bar{gap:48px}
+.hx-facts{flex:1;min-width:0;justify-content:space-between;gap:24px}
+.hx-facts>div{min-width:0}
+
+/* phones: back to two stacked lines (one row would be too wide) */
+@media(max-width:700px){
+  .hx-h1{flex-direction:column;align-items:center;gap:0;font-size:clamp(46px,14.5vw,84px);line-height:.98}
+  .hx-in{padding-top:clamp(88px,13vh,130px)}
+}/* ---------- hero is always dark, whatever the site theme ---------- */
+.hx{
+  --bg:#000;--ink:#f5f5f7;--inv:#f5f5f7;--invt:#1d1d1f;
+  --hx-gold-soft:#d3c1a0
+}
+.hx-grain{opacity:.07}
+
+/* header over the hero: light text while it floats on the dark photo (light theme only needs this),
+   normal theme colours return once it turns frosted on scroll or the phone menu is open */
+body:has(.hx) header:not(.scrolled):not(.mopen){
+  --ink:#f5f5f7;--mute:#a1a1a6;--soft:rgba(255,255,255,.12);--line:rgba(255,255,255,.16)
+}
+body:has(.hx) header{color:var(--ink)}
+
+/* footer facts no longer sit on the watch: photo stops above the bar and fades out at the bottom */
+.hx-plate{
+  bottom:clamp(70px,10vh,100px);height:62%;
+  -webkit-mask-image:
+    linear-gradient(180deg,transparent 0,#000 32%),
+    linear-gradient(0deg,transparent 0,#000 22%),
+    linear-gradient(90deg,transparent 0,#000 20%,#000 80%,transparent 100%);
+  -webkit-mask-composite:source-in,source-in;
+  mask-image:
+    linear-gradient(180deg,transparent 0,#000 32%),
+    linear-gradient(0deg,transparent 0,#000 22%),
+    linear-gradient(90deg,transparent 0,#000 20%,#000 80%,transparent 100%);
+  mask-composite:intersect
+}
+@media(max-width:1000px){.hx-plate{bottom:clamp(70px,10vh,100px);height:54%}}
+@media(max-width:700px){.hx-plate{bottom:80px;height:48%}}/* ---------- watch lower (buttons get a clear view), footer pinned to the bottom ---------- */
+
+/* the hero was starting 21px below the header's top edge; align it so full-screen is exact */
+body:has(.hx) header{margin-bottom:-65px}
+@media(min-width:901px){
+  body:has(.hx) header{margin-bottom:-85px}
+  body:has(.hx) header.scrolled .nav{height:84px} /* no height jump while scrolling over the hero */
+}
+
+/* watch: pushed down and a touch smaller, so the case no longer touches the buttons */
+.hx-plate{bottom:-40px;height:60%;width:min(1320px,100%)}
+@media(max-width:1000px){.hx-plate{bottom:-20px;height:52%}}
+@media(max-width:700px){.hx-plate{bottom:0;height:46%}}
+
+/* footer: sits at the very bottom, with a soft dark base so the text stays readable over the watch */
+.hx-in{padding-bottom:0}
+.hx-bar{background:linear-gradient(0deg,rgba(0,0,0,.9) 0,rgba(0,0,0,.55) 60%,transparent 100%)}
+.hx-facts>div,.hx-scroll{padding:20px 0 16px}
+@media(max-width:700px){.hx-facts>div{padding:14px 0 14px}}/* hero is a <section>: cancel the global section padding (96px top/bottom) */
+.hx{padding:0}
+
+/* keep the content where it is now (that 96px used to come from the section padding) */
+.hx .hx-in.wrap{padding-top:96px;padding-bottom:0}
+
+/* footer: edge-to-edge, no background, a little lower */
+.hx .hx-bar{
+  background:none!important;
+  margin-inline:calc(var(--pad) * -1);   /* hairline runs the full 100% width */
+  padding-inline:var(--pad);             /* text still lines up with the logo and header pill */
+}
+.hx .hx-facts>div,.hx .hx-scroll{padding:22px 0 72px}
+@media(max-width:700px){
+  .hx .hx-facts>div{padding:14px 0 28px}
+}
