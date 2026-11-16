@@ -24,6 +24,9 @@ export const AIcon = {
   out: I(<path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9" />),
   fold: I(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M9 4v16" /></>),
   down: I(<path d="M6 9l6 6 6-6" />),
+  heart: I(<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />),
+  pin: I(<><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></>),
+  user: I(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>),
 };
 
 // [path, label, icon]. Each role only sees the pages listed for it in PERM (data.js).
@@ -64,7 +67,7 @@ export function Avatar({ name = "?", src, size = 36 }) {
   );
 }
 
-function useOutside(ref, close) {
+export function useOutside(ref, close) {
   useEffect(() => {
     const down = (e) => { if (!ref.current?.contains(e.target)) close(); };
     const key = (e) => { if (e.key === "Escape") close(); };

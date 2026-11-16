@@ -1,0 +1,79 @@
+
+/* ===================================================================================================
+   Typography: one system for the shop, the customer dashboard and the admin area.
+   Modelled on Apple's website type: the SF Pro system font, semibold headlines with tight spacing,
+   a 17px reading size, calm grey secondary text and nothing smaller than 12px.
+   On iPhone, iPad and Mac it shows SF Pro. On Windows and Android it falls back to Inter, then the
+   system font (Segoe UI or Roboto). Change a size here and every page follows.
+   =================================================================================================== */
+:root{
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font:400 17px/1.47059 var(--font);letter-spacing:-.011em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none}
+button,input,select,textarea{font-family:inherit;letter-spacing:inherit}
+
+/* headlines */
+h1,h2,h3,h4,.h1,.h2,.h3{font-family:var(--font-display);font-weight:600}
+.h1{font-size:clamp(40px,6.4vw,80px);line-height:1.05;letter-spacing:-.015em}                 /* hero */
+.h2{font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-.009em}                  /* page and section titles */
+.h3{font-size:clamp(22px,2.4vw,28px);line-height:1.14;letter-spacing:-.005em}                /* sub-sections */
+h4,footer h4{font-size:14px;line-height:1.3;letter-spacing:0}
+.lead{font-size:clamp(18px,1.8vw,21px);line-height:1.4;letter-spacing:-.008em}
+
+/* reading text */
+p{line-height:1.5}
+.sm{font-size:14px;line-height:1.43}
+.mute{letter-spacing:-.006em}
+.f{font-size:14px;line-height:1.4}
+.input{font-size:16px}
+.chip{font-size:15px}
+.fchk,.fbtn,.fbar select{font-size:15px}
+.btn{font-size:15px;letter-spacing:-.006em}
+.btn-s{font-size:14px}
+table{font-size:15px}
+.tbl th,.c3.hd,.rl-k,.rl-l{font-size:12px}
+.badge,.crumb,.top,.steps div,.stk,.rl-full{font-size:13px}
+footer,footer a,.facts,.glass,.toast{font-size:14px}
+
+/* storefront: logo, navigation, cards */
+.logo{font-family:var(--font-display);font-size:24px;font-weight:600;letter-spacing:.14em}
+.links a{font-family:var(--font);font-size:15px;font-weight:400;letter-spacing:-.006em}
+.card h3,.trust h3,.rl-cap h3{font-family:var(--font);font-size:17px;font-weight:600;line-height:1.3;letter-spacing:-.011em}
+.card.list h3{font-size:20px}
+.price{font-size:17px;letter-spacing:-.011em}
+.tile h3{font-size:clamp(24px,2.4vw,30px)}
+.rl-t{font-family:var(--font-display);font-size:26px;font-weight:600}
+.stats .h2{font-size:clamp(28px,3vw,36px)}
+summary{font-size:17px}
+.ussd{font-family:var(--font-mono)}
+
+/* phones: the full-screen menus use the same family at a calmer size */
+@media(max-width:900px){
+  .links a,.dside .dnav a,.dside .dnav .out,.ad .adnav a{font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-.012em}
+  .links a{font-size:26px}
+}
+@media(max-width:600px){.h1{font-size:clamp(36px,11vw,48px)}}
+
+/* dashboards (admin and customer): a denser 15px reading size */
+.ax-content{font-size:15px;line-height:1.5;letter-spacing:-.006em}
+.ax-content .sm{font-size:13px}
+.ax-ph h1{font-family:var(--font-display);font-size:clamp(26px,3vw,32px);font-weight:600;line-height:1.15;letter-spacing:-.012em}
+.ax-ph p{font-size:15px}
+.ax-ch h2{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.008em}
+.ax-ch p{font-size:14px}
+.ax-name{font-size:20px;font-weight:600;letter-spacing:.14em}
+.ax-mark{font-family:var(--font-display);font-weight:600}
+.ax-a{font-size:15px;letter-spacing:-.006em}
+.ax-content .tbl{font-size:14px}
+.ax-content .h3{font-size:clamp(20px,2vw,24px)}
+.ax-lh h1{font-family:var(--font-display);font-size:28px;font-weight:600;letter-spacing:-.012em}
+.pf-h h2{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.008em}
+.rw-top h2,.mdl h2{font-family:var(--font-display);font-size:24px;font-weight:600;letter-spacing:-.01em}
+.rsum-n{font-family:var(--font-display);font-weight:600;letter-spacing:-.02em}
+@media(max-width:900px){.ax-content .input,.ax-content .textarea{font-size:16px}}
+
+/* product names are long: a calmer headline size on the product page */
+.stack h1.h2{font-size:clamp(28px,3.2vw,40px)}

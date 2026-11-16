@@ -154,10 +154,10 @@ export default function Hero({ minFee }) {
             <span className="hx-line hx-em" aria-hidden="true"><span style={{ "--i": 1 }}>well kept.</span></span>
           </h1>
 
-          <p className="hx-lead hx-r">Watches chosen for design and reliability, checked by our team in Kigali and delivered to your door.</p>
+          <p className="hx-lead hx-r">Discover watches that bring together timeless design, everyday comfort, and effortless style. Whether you're dressing for a special occasion or making every day count, find a timepiece that speaks to you.</p>
 
           <div className="hx-cta hx-r">
-            <Link className="hx-btn hx-pri" to="/shop"><span>Shop the collection</span><Arrow /></Link>
+            <Link className="hx-btn hx-pri" to="/shop"><span>Explore the collection</span><Arrow /></Link>
             <Link className="hx-btn hx-sec" to="/contact">Talk to us</Link>
           </div>
         </div>

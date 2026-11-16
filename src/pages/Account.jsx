@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useStore } from "../store";
-import { Img, Button, Badge, Empty, Field, Input, Pager, Panel, Select, ProductCard, Stars, MenuButton, useMenu, usePaged } from "../ui";
+import { Img, Button, Badge, Empty, Field, Input, Pager, Panel, Select, ProductCard, Stars, usePaged } from "../ui";
+import AccountShell from "../AccountShell";
+import { PageHead } from "../AdminShell";
 import ReviewDialog from "../ReviewDialog";
 import { AuthBox } from "./Login";
 import { fmt, dt } from "../lib";
@@ -9,10 +11,9 @@ import { fmt, dt } from "../lib";
 // Rows per page in the customer area.
 const PAGE_SIZE = { orders: 6, wishlist: 6 };
 
+// Signed out: a sign-in page inside the shop layout. Signed in: the dashboard (see AccountShell.jsx).
 export default function Account() {
-  const { user, signOut } = useStore();
-  const { pathname } = useLocation();
-  const [open, setOpen] = useMenu();
+  const { user } = useStore();
   if (!user) {
     return (
       <section style={{ paddingTop: 56 }}><div className="wrap" style={{ maxWidth: 440 }}>
@@ -21,25 +22,7 @@ export default function Account() {
       </div></section>
     );
   }
-  const items = [["", "Overview"], ["orders", "Orders"], ["wishlist", "Wishlist"], ["addresses", "Addresses"], ["profile", "Profile"]];
-  const cur = (items.find(([p]) => p && pathname.startsWith(`/account/${p}`)) || items[0])[1];
-  const close = () => setOpen(false);
-  return (
-    <section className="dsec"><div className="wrap"><div className="dash">
-      <div className={`scrim d${open ? " show" : ""}`} onClick={close} aria-hidden="true" />
-      <div className="dside">
-        <div className="dbar">
-          <div><span className="mute sm">Account</span><b>{cur}</b></div>
-          <MenuButton open={open} onClick={() => setOpen((o) => !o)} label="account menu" controls="dnav" />
-        </div>
-        <nav id="dnav" className={`dnav${open ? " open" : ""}`} aria-label="Account">
-          {items.map(([p, l], i) => <NavLink key={p} to={`/account${p ? "/" + p : ""}`} end onClick={close} style={{ "--i": i }}>{l}</NavLink>)}
-          <button className="out" onClick={() => { close(); signOut(); }} style={{ "--i": items.length }}>Sign out</button>
-        </nav>
-      </div>
-      <div><Outlet /></div>
-    </div></div></section>
-  );
+  return <AccountShell />;
 }
 
 const OrderRow = ({ o }) => {
@@ -60,8 +43,7 @@ export function Overview() {
   const stats = [["Orders", orders.length, "orders"], ["Wishlist", wish.length, "wishlist"], ["Saved addresses", addrs.length, "addresses"]];
   return (
     <>
-      <h1 className="h2">Hi, {user.name.split(" ")[0]}</h1>
-      <p className="mute" style={{ margin: "8px 0 28px" }}>{user.email}</p>
+      <PageHead title={`Hi, ${user.name.split(" ")[0]}`} sub={`${user.email}. Here is a summary of your account.`} />
       <div className="stats">
         {stats.map(([l, n, to]) => <Link key={to} className="panel" to={`/account/${to}`}><div className="h2">{n}</div><div className="mute sm">{l}</div></Link>)}
       </div>
@@ -72,7 +54,7 @@ export function Overview() {
           <Button size="s" to="/account/orders">Rate {eligible.length === 1 ? "it" : "them"}</Button>
         </Panel>
       )}
-      <h2 className="h3" style={{ margin: "40px 0 16px" }}>Latest order</h2>
+      <h2 className="h3">Latest order</h2>
       {orders[0] ? <OrderRow o={orders[0]} /> : <Empty text="You have not placed an order yet." />}
     </>
   );
@@ -83,8 +65,8 @@ export function Orders() {
   const pg = usePaged(orders, PAGE_SIZE.orders);
   return (
     <>
-      <h1 className="h2" style={{ marginBottom: 24 }}>Orders</h1>
-      {orders.length ? <div>{pg.items.map((o) => <OrderRow key={o.id} o={o} />)}</div> : <Empty text="Your orders will appear here once you place one." />}
+      <PageHead title="Orders" sub={orders.length ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}. Open one to see its delivery progress.` : "Everything you order will be listed here."} />
+      {orders.length ? <div className="olist">{pg.items.map((o) => <OrderRow key={o.id} o={o} />)}</div> : <Empty text="Your orders will appear here once you place one." />}
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
     </>
   );
@@ -104,9 +86,7 @@ export function OrderDetail() {
   };
   return (
     <>
-      <Link className="mute sm" to="/account/orders">Back to orders</Link>
-      <h1 className="h2" style={{ margin: "8px 0 4px" }}>{o.id}</h1>
-      <p className="mute" style={{ marginBottom: 24 }}>Placed on {dt(o.date)}</p>
+      <PageHead title={`Order ${o.id}`} sub={`Placed on ${dt(o.date)}`} actions={<Button to="/account/orders" variant="o" size="s">Back to orders</Button>} />
       {o.status === "Cancelled"
         ? <p className="badge" style={{ marginBottom: 24, display: "inline-block" }}>Cancelled</p>
         : <div className="steps">{L.map((x, i) => <div key={x} className={i <= ix ? "d" : ""}>{x}</div>)}</div>}
@@ -154,7 +134,7 @@ export function Wishlist() {
   const pg = usePaged(wish, PAGE_SIZE.wishlist);
   return (
     <>
-      <h1 className="h2" style={{ marginBottom: 24 }}>Wishlist</h1>
+      <PageHead title="Wishlist" sub={wish.length ? `${wish.length} saved ${wish.length === 1 ? "watch" : "watches"}.` : "Watches you save with the heart will be kept here."} />
       {wish.length
         ? <div className="grid g3">{pg.items.map((i) => <ProductCard key={i} p={products[i]} />)}</div>
         : <Empty text="Tap the heart on any watch to save it here." />}
@@ -175,10 +155,7 @@ export function Addresses() {
   };
   return (
     <>
-      <div className="head" style={{ marginBottom: 24, alignItems: "center" }}>
-        <h1 className="h2">Addresses</h1>
-        {ed == null && <Button size="s" onClick={() => setEd(-1)}>Add address</Button>}
-      </div>
+      <PageHead title="Addresses" sub="Saved places we can deliver to. Pick one at checkout to save time." actions={ed == null && <Button size="s" onClick={() => setEd(-1)}>Add address</Button>} />
       {ed != null && (
         <form className="panel stack" style={{ marginBottom: 20 }} onSubmit={submit} key={ed}>
           <h2 className="h3">{ed >= 0 ? "Edit address" : "New address"}</h2>
@@ -217,8 +194,8 @@ export function Profile() {
   const { user, updateProfile } = useStore();
   return (
     <>
-      <h1 className="h2" style={{ marginBottom: 24 }}>Profile</h1>
-      <form className="panel stack" style={{ maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); updateProfile(d.get("name"), d.get("phone")); }}>
+      <PageHead title="Profile" sub="The details we use for your orders and deliveries." />
+      <form className="panel stack" style={{ maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); updateProfile(d.get("name"), d.get("phone")); }}>
         <Field label="Full name"><Input name="name" required defaultValue={user.name} /></Field>
         <Field label="Email"><Input value={user.email} disabled readOnly /></Field>
         <Field label="Phone"><Input name="phone" type="tel" defaultValue={user.phone} /></Field>

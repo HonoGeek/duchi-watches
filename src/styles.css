@@ -627,7 +627,7 @@ header.mopen{background:var(--bg)}
 .kpi .kn{font-size:12px;color:var(--mute)}
 .dgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;margin-top:16px}
 .bars{height:200px;gap:10px}
-.bars em{font-style:normal;font-size:11px;color:var(--mute);height:16px;line-height:16px}
+.bars em{font-style:normal;font-size:12px;color:var(--mute);height:16px;line-height:16px}
 .bars span{height:16px;line-height:16px}
 .bars div:not(.today) i{background:color-mix(in srgb,var(--gold) 50%,var(--soft))}
 .bars .today span{color:var(--ink);font-weight:600}
@@ -660,7 +660,7 @@ header.mopen{background:var(--bg)}
 .ptool .psearch .input{padding-left:44px}
 .pthumb{position:relative;width:48px;height:48px;border-radius:10px;overflow:hidden;flex:none;background:var(--soft)}
 .pthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.pthumb span{position:absolute;right:3px;bottom:3px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;display:grid;place-items:center}
+.pthumb span{position:absolute;right:3px;bottom:3px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;display:grid;place-items:center}
 .stockin.low{border-color:#e0a100;color:#b26a00}
 .stockin.out{border-color:#d93025;color:#d93025}
 
@@ -693,7 +693,7 @@ header.mopen{background:var(--bg)}
 .pth{position:relative;aspect-ratio:1;border-radius:var(--rs);overflow:hidden;background:var(--bg);border:1px solid var(--line);cursor:grab}
 .pth img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none}
 .pth.drag{opacity:.4}
-.pth-cover{position:absolute;left:8px;top:8px;padding:3px 10px;border-radius:99px;background:var(--gold);color:#151515;font-size:11px;font-weight:600}
+.pth-cover{position:absolute;left:8px;top:8px;padding:3px 10px;border-radius:99px;background:var(--gold);color:#151515;font-size:12px;font-weight:600}
 .pth-bar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:4px;padding:20px 6px 6px;background:linear-gradient(transparent,rgba(0,0,0,.65));opacity:0;transition:opacity .25s}
 .pth:hover .pth-bar,.pth:focus-within .pth-bar{opacity:1}
 @media(hover:none){.pth-bar{opacity:1}}
@@ -728,7 +728,7 @@ header.mopen{background:var(--bg)}
 .catimg{position:relative;width:56px;height:56px;border-radius:12px;overflow:hidden;background:var(--soft);display:grid;place-items:center;cursor:pointer;flex:none;border:1px dashed var(--line)}
 .catimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .catimg b{font-size:22px;color:var(--mute);font-weight:400}
-.catimg span{position:absolute;left:0;right:0;bottom:0;padding:2px 0;text-align:center;font-size:10px;color:#fff;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s}
+.catimg span{position:absolute;left:0;right:0;bottom:0;padding:2px 0;text-align:center;font-size:11px;color:#fff;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s}
 .catimg:hover span,.catimg:focus-within span{opacity:1}
 .catimg input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .catname{height:40px!important;max-width:240px;font-weight:500}
@@ -780,7 +780,7 @@ header.mopen{background:var(--bg)}
 .vfile{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:var(--r);background:var(--bg)}
 .vfile-th{position:relative;width:84px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#111;flex:none}
 .vfile-th img{width:100%;height:100%;object-fit:cover;display:block}
-.vfile-th span{position:absolute;right:6px;bottom:6px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:11px}
+.vfile-th span{position:absolute;right:6px;bottom:6px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:12px}
 .vfile-info{display:grid;gap:2px;min-width:0;flex:1 1 220px}
 .vfile-info b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .upl.busy{opacity:.6;pointer-events:none}
@@ -827,22 +827,22 @@ header.mopen{background:var(--bg)}
 .ax-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 14px;background:var(--ax-card);border-right:1px solid var(--line);z-index:40;overflow:hidden}
 .ax-brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 6px 18px;min-height:58px}
 .ax-logo{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink)}
-.ax-mark{width:38px;height:38px;border-radius:11px;background:var(--inv);color:var(--invt);display:grid;place-items:center;font:600 21px/1 'Cormorant Garamond',Georgia,serif;flex:none}
-.ax-name{font:600 22px/1 'Cormorant Garamond',Georgia,serif;letter-spacing:.1em;white-space:nowrap}
+.ax-mark{width:38px;height:38px;border-radius:11px;background:var(--inv);color:var(--invt);display:grid;place-items:center;font:600 21px/1 var(--font-display);flex:none}
+.ax-name{font:600 22px/1 var(--font-display);letter-spacing:.1em;white-space:nowrap}
 .ax-name i{color:var(--gold);font-style:normal}
-.ax-name small{font:500 11px Inter,sans-serif;letter-spacing:.04em;color:var(--mute);margin-left:6px}
+.ax-name small{font:500 12px var(--font);letter-spacing:.04em;color:var(--mute);margin-left:6px}
 .ax-fold{width:36px;height:36px;border-radius:10px;border:0;background:none;color:var(--mute);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .2s,color .2s}
 .ax-fold:hover{background:var(--ax-page);color:var(--ink)}
 .ax-fold svg,.ax-ic svg,.ax-btn svg,.ax-view svg,.ax-pic svg,.ax-chev svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .ax-nav{flex:1;min-height:0;overflow-y:auto;display:grid;align-content:start;gap:18px;padding:4px 0 12px;scrollbar-width:thin}
 .ax-grp{display:grid;gap:2px}
-.ax-gl{font:500 11px Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:0 12px 6px}
+.ax-gl{font:500 12px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:0 12px 6px}
 .ax-a{position:relative;display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:12px;color:var(--mute);font-size:14.5px;white-space:nowrap;transition:background .2s,color .2s}
 .ax-a:hover{background:var(--ax-page);color:var(--ink)}
 .ax-a.active{background:var(--ax-page);color:var(--ink);font-weight:500}
 .ax-a.active::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
 .ax-ic{width:20px;height:20px;flex:none;display:grid;place-items:center}
-.ax-ct{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--gold);color:#151515;font-size:11px;font-weight:600;display:grid;place-items:center}
+.ax-ct{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--gold);color:#151515;font-size:12px;font-weight:600;display:grid;place-items:center}
 .ax-foot{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
 .ax-user{display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;color:var(--ink);transition:background .2s}
 .ax-user:hover{background:var(--ax-page)}
@@ -860,7 +860,7 @@ header.mopen{background:var(--bg)}
   .ax.col .ax-grp+.ax-grp{border-top:1px solid var(--line);padding-top:12px}
   .ax.col .ax-a{justify-content:center;padding:0}
   .ax.col .ax-a.active::before{left:-12px}
-  .ax.col .ax-ct{position:absolute;top:3px;right:6px;min-width:16px;height:16px;font-size:10px;padding:0 4px}
+  .ax.col .ax-ct{position:absolute;top:3px;right:6px;min-width:16px;height:16px;font-size:11px;padding:0 4px}
   .ax.col .ax-user{justify-content:center;padding:8px 0}
 }
 
@@ -875,7 +875,7 @@ header.mopen{background:var(--bg)}
 .ax-tools{margin-left:auto;display:flex;align-items:center;gap:8px}
 .ax-btn{position:relative;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--ax-card);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0;transition:border-color .2s,background .2s}
 .ax-btn:hover{border-color:var(--gold)}
-.ax-dot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#d93025;color:#fff;font-size:10px;font-weight:600;display:grid;place-items:center;border:2px solid var(--ax-card)}
+.ax-dot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#d93025;color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;border:2px solid var(--ax-card)}
 .ax-view{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:99px;border:1px solid var(--line);background:var(--ax-card);color:var(--ink);font-size:14px;transition:border-color .2s}
 .ax-view:hover{border-color:var(--gold)}
 .ax-view svg{width:18px;height:18px}
@@ -887,7 +887,7 @@ header.mopen{background:var(--bg)}
 .ax-dd{position:relative}
 .ax-pop{position:absolute;right:0;top:calc(100% + 10px);width:310px;max-width:calc(100vw - 24px);padding:8px;background:var(--ax-card);border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 56px rgba(0,0,0,.2);z-index:60;animation:axpop .18s var(--e)}
 @keyframes axpop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.ax-poph{font:500 12px Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:10px 12px 6px}
+.ax-poph{font:500 12px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:10px 12px 6px}
 .ax-pe{padding:10px 12px 14px;color:var(--mute);font-size:14px}
 .ax-pi{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:background .15s}
 .ax-pi:hover{background:var(--ax-page)}
@@ -902,11 +902,11 @@ header.mopen{background:var(--bg)}
 .ax-content{width:100%;max-width:1400px;margin:0 auto;padding:28px 32px 56px;display:grid;gap:20px;align-content:start;min-width:0}
 .ax-content>*{margin-top:0!important;margin-bottom:0!important}
 .ax-ph{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.ax-ph h1{font:600 32px/1.15 'Cormorant Garamond',Georgia,serif;letter-spacing:-.005em;margin:0}
+.ax-ph h1{font:600 32px/1.15 var(--font-display);letter-spacing:-.005em;margin:0}
 .ax-ph p{margin:6px 0 0;color:var(--mute);font-size:14px;line-height:1.5;max-width:680px}
 .ax-pa{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ax-ch{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
-.ax-ch h2{font:600 22px/1.2 'Cormorant Garamond',Georgia,serif;margin:0}
+.ax-ch h2{font:600 22px/1.2 var(--font-display);margin:0}
 .ax-ch p{margin:4px 0 0;color:var(--mute);font-size:13px}
 
 /* cards, tables and fields */
@@ -954,7 +954,7 @@ header.mopen{background:var(--bg)}
 .ax-lc{width:min(420px,100%);display:grid;gap:16px;padding:32px;background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.1)}
 [data-theme="dark"] .ax-lc{background:#161618}
 .ax-lh{display:flex;gap:14px;align-items:center;margin-bottom:6px}
-.ax-lh h1{font:600 28px/1.1 'Cormorant Garamond',Georgia,serif;margin:0}
+.ax-lh h1{font:600 28px/1.1 var(--font-display);margin:0}
 .ax-lh p{margin:4px 0 0;color:var(--mute);font-size:14px}
 .ax-ld{line-height:1.5}
 
@@ -979,76 +979,17 @@ header.mopen{background:var(--bg)}
 @media(max-width:700px){.ax-content .tw{background:none;border:0;box-shadow:none;overflow:visible}}
 @media(prefers-reduced-motion:reduce){.ax,.ax-side,.ax-pop{transition:none;animation:none}}
 
-/* ===== Reviews: star picker, review dialog, invitation, product reviews, admin ===== */
-.spick{display:flex;align-items:center;gap:2px}
-.spick button{width:44px;height:44px;border:0;background:none;padding:0;display:grid;place-items:center;cursor:pointer;color:var(--line);transition:transform .15s var(--e),color .15s}
-.spick button svg{width:34px;height:34px;fill:currentColor;stroke:none}
-.spick button.on{color:var(--gold)}
-.spick button:hover{transform:scale(1.12)}
-.spick button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:10px}
-.spick-w{margin-left:10px;font-size:14px;color:var(--mute);min-width:84px}
-.mdl{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:mdlin .25s ease;overflow-y:auto}
-@keyframes mdlin{from{opacity:0}to{opacity:1}}
-.mdl-box{position:relative;width:min(520px,100%);max-height:calc(100vh - 32px);overflow-y:auto;display:grid;gap:16px;padding:28px;background:var(--bg);color:var(--ink);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:mdlup .35s var(--e);outline:none}
-@keyframes mdlup{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
-.mdl-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:0;background:var(--soft);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
-.mdl-x svg{width:16px;height:16px}
-.mdl-act{justify-content:flex-end}
-.rw-top{display:flex;gap:16px;align-items:center;padding-right:40px}
-.rw-top h2{font:600 26px/1.15 'Cormorant Garamond',Georgia,serif;margin:0 0 4px}
-.rw-th{width:64px;height:64px;border-radius:14px;overflow:hidden;flex:none;background:var(--soft)}
-.rw-th img{width:100%;height:100%;object-fit:cover;display:block}
-.rw-vb{display:inline-flex;align-items:center;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:500;color:#1f8a4c;background:rgba(46,158,91,.12);white-space:nowrap}
-[data-theme="dark"] .rw-vb{color:#5fd08a}
-.rw-ph{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.rw-pv{position:relative;width:76px;height:76px;border-radius:12px;overflow:hidden}
-.rw-pv img{width:100%;height:100%;object-fit:cover;display:block}
-.rw-pv button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
-.rw-pv button svg{width:12px;height:12px}
-.rnudge{position:fixed;left:20px;bottom:20px;z-index:55;display:flex;gap:14px;width:min(400px,calc(100vw - 40px));padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.2);animation:mdlup .5s var(--e)}
-.rn-th{width:56px;height:56px;border-radius:12px;overflow:hidden;flex:none;background:var(--soft)}
-.rn-th img{width:100%;height:100%;object-fit:cover;display:block}
-.rn-b{display:grid;gap:6px;font-size:14px;min-width:0}
-.rn-b>span{color:var(--mute);line-height:1.45}
-.rn-b .row{gap:8px 14px;margin-top:4px;align-items:center}
-.rn-b .lnk.mute{color:var(--mute);font-weight:400}
-/* on the product page and in cards */
-.crat{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;color:var(--mute)}
-.crat .st svg{width:13px;height:13px}
-.prat{display:flex;align-items:center;gap:10px;margin-top:10px;border:0;background:none;color:var(--mute);font:inherit;font-size:14px;cursor:pointer;padding:0}
-.prat:hover{color:var(--ink)}
-.rsum-cta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px}
-.rsort{width:180px;height:44px;border-radius:99px}
-.rsplit{display:grid;grid-template-columns:300px minmax(0,1fr);gap:48px;align-items:start}
-.rsum{display:grid;gap:8px;position:sticky;top:96px}
-.rsum-n{font:600 64px/1 'Cormorant Garamond',Georgia,serif}
-.rbars{display:grid;gap:8px;margin-top:10px}
-.rbars>div{display:grid;grid-template-columns:14px 1fr 28px;gap:10px;align-items:center;font-size:13px;color:var(--mute)}
-.rbars>div>div{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
-.rbars i{display:block;height:100%;background:var(--gold);border-radius:99px}
-.rbars em{font-style:normal;text-align:right}
-.rlist{display:grid;gap:16px}
-.rrow{padding:22px 24px;background:var(--bg);border-radius:var(--r);display:grid;gap:12px}
-.rrow-h{display:flex;justify-content:space-between;align-items:center}
-.rrow p{margin:0;line-height:1.6}
-.rrow-img{width:min(280px,100%);aspect-ratio:4/3;border-radius:12px;overflow:hidden}
-.rrow-img img{width:100%;height:100%;object-fit:cover;display:block}
-.rrow-f{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
-.rrow-own{margin-left:auto;display:flex;gap:14px}
-.rrep{padding:14px 16px;border-radius:12px;background:var(--soft);border-left:3px solid var(--gold);font-size:14px}
-.rrep b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin-bottom:4px;font-weight:500}
-.rrep p{margin:0;line-height:1.55}
-.rempty{padding:36px;text-align:center;background:var(--bg);border-radius:var(--r);display:grid;gap:6px}
-/* admin > Reviews */
-.rva{display:grid;gap:8px;max-width:560px}
-.rva-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.rva p{margin:0;line-height:1.55}
-.rva-img{width:120px;aspect-ratio:4/3;border-radius:10px;overflow:hidden}
-.rva-img img{width:100%;height:100%;object-fit:cover;display:block}
-.rva-rep{display:grid;gap:8px}
-@media(max-width:900px){.rsplit{grid-template-columns:1fr;gap:24px}.rsum{position:static}}
-@media(max-width:600px){.rnudge{left:12px;right:12px;bottom:calc(88px + env(safe-area-inset-bottom,0px));width:auto}.mdl-box{padding:22px}.spick button{width:42px}}
-@media(prefers-reduced-motion:reduce){.mdl,.mdl-box,.rnudge{animation:none}}
+/* --- customer dashboard bits --- */
+.ax-userbtn{width:100%;border:0;background:none;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
+.ax-ul small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ax-content .olist{display:grid;gap:12px}
+.ax-content .olist .panel,.ax-content .orow{margin:0}
+.ax-content .orow{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;transition:border-color .2s}
+.ax-content .orow:hover{border-color:var(--gold)}
+.ax-content .stats{gap:16px}
+.ax-content .stats .panel{transition:border-color .2s}
+.ax-content .stats .panel:hover{border-color:var(--gold)}
+.ax-content .addr,.ax-content .steps{margin:0}
 
 /* ===== Reviews: star picker, review dialog, invitation, product reviews, admin ===== */
 .spick{display:flex;align-items:center;gap:2px}
@@ -1066,10 +1007,10 @@ header.mopen{background:var(--bg)}
 .mdl-x svg{width:16px;height:16px}
 .mdl-act{justify-content:flex-end}
 .rw-top{display:flex;gap:16px;align-items:center;padding-right:40px}
-.rw-top h2{font:600 26px/1.15 'Cormorant Garamond',Georgia,serif;margin:0 0 4px}
+.rw-top h2{font:600 26px/1.15 var(--font-display);margin:0 0 4px}
 .rw-th{width:64px;height:64px;border-radius:14px;overflow:hidden;flex:none;background:var(--soft)}
 .rw-th img{width:100%;height:100%;object-fit:cover;display:block}
-.rw-vb{display:inline-flex;align-items:center;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:500;color:#1f8a4c;background:rgba(46,158,91,.12);white-space:nowrap}
+.rw-vb{display:inline-flex;align-items:center;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:500;color:#1f8a4c;background:rgba(46,158,91,.12);white-space:nowrap}
 [data-theme="dark"] .rw-vb{color:#5fd08a}
 .rw-ph{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .rw-pv{position:relative;width:76px;height:76px;border-radius:12px;overflow:hidden}
@@ -1092,7 +1033,7 @@ header.mopen{background:var(--bg)}
 .rsort{width:180px;height:44px;border-radius:99px}
 .rsplit{display:grid;grid-template-columns:300px minmax(0,1fr);gap:48px;align-items:start}
 .rsum{display:grid;gap:8px;position:sticky;top:96px}
-.rsum-n{font:600 64px/1 'Cormorant Garamond',Georgia,serif}
+.rsum-n{font:600 64px/1 var(--font-display)}
 .rbars{display:grid;gap:8px;margin-top:10px}
 .rbars>div{display:grid;grid-template-columns:14px 1fr 28px;gap:10px;align-items:center;font-size:13px;color:var(--mute)}
 .rbars>div>div{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
@@ -1126,3 +1067,82 @@ header.mopen{background:var(--bg)}
 .orev .st svg{width:14px;height:14px}
 .rvcta{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}
 .rvcta p{margin:2px 0 0}
+
+/* ===================================================================================================
+   Typography: one system for the shop, the customer dashboard and the admin area.
+   Modelled on Apple's website type: the SF Pro system font, semibold headlines with tight spacing,
+   a 17px reading size, calm grey secondary text and nothing smaller than 12px.
+   On iPhone, iPad and Mac it shows SF Pro. On Windows and Android it falls back to Inter, then the
+   system font (Segoe UI or Roboto). Change a size here and every page follows.
+   =================================================================================================== */
+:root{
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font:400 17px/1.47059 var(--font);letter-spacing:-.011em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none}
+button,input,select,textarea{font-family:inherit;letter-spacing:inherit}
+
+/* headlines */
+h1,h2,h3,h4,.h1,.h2,.h3{font-family:var(--font-display);font-weight:600}
+.h1{font-size:clamp(40px,6.4vw,80px);line-height:1.05;letter-spacing:-.015em}                 /* hero */
+.h2{font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-.009em}                  /* page and section titles */
+.h3{font-size:clamp(22px,2.4vw,28px);line-height:1.14;letter-spacing:-.005em}                /* sub-sections */
+h4,footer h4{font-size:14px;line-height:1.3;letter-spacing:0}
+.lead{font-size:clamp(18px,1.8vw,21px);line-height:1.4;letter-spacing:-.008em}
+
+/* reading text */
+p{line-height:1.5}
+.sm{font-size:14px;line-height:1.43}
+.mute{letter-spacing:-.006em}
+.f{font-size:14px;line-height:1.4}
+.input{font-size:16px}
+.chip{font-size:15px}
+.fchk,.fbtn,.fbar select{font-size:15px}
+.btn{font-size:15px;letter-spacing:-.006em}
+.btn-s{font-size:14px}
+table{font-size:15px}
+.tbl th,.c3.hd,.rl-k,.rl-l{font-size:12px}
+.badge,.crumb,.top,.steps div,.stk,.rl-full{font-size:13px}
+footer,footer a,.facts,.glass,.toast{font-size:14px}
+
+/* storefront: logo, navigation, cards */
+.logo{font-family:var(--font-display);font-size:24px;font-weight:600;letter-spacing:.14em}
+.links a{font-family:var(--font);font-size:15px;font-weight:400;letter-spacing:-.006em}
+.card h3,.trust h3,.rl-cap h3{font-family:var(--font);font-size:17px;font-weight:600;line-height:1.3;letter-spacing:-.011em}
+.card.list h3{font-size:20px}
+.price{font-size:17px;letter-spacing:-.011em}
+.tile h3{font-size:clamp(24px,2.4vw,30px)}
+.rl-t{font-family:var(--font-display);font-size:26px;font-weight:600}
+.stats .h2{font-size:clamp(28px,3vw,36px)}
+summary{font-size:17px}
+.ussd{font-family:var(--font-mono)}
+
+/* phones: the full-screen menus use the same family at a calmer size */
+@media(max-width:900px){
+  .links a,.dside .dnav a,.dside .dnav .out,.ad .adnav a{font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-.012em}
+  .links a{font-size:26px}
+}
+@media(max-width:600px){.h1{font-size:clamp(36px,11vw,48px)}}
+
+/* dashboards (admin and customer): a denser 15px reading size */
+.ax-content{font-size:15px;line-height:1.5;letter-spacing:-.006em}
+.ax-content .sm{font-size:13px}
+.ax-ph h1{font-family:var(--font-display);font-size:clamp(26px,3vw,32px);font-weight:600;line-height:1.15;letter-spacing:-.012em}
+.ax-ph p{font-size:15px}
+.ax-ch h2{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.008em}
+.ax-ch p{font-size:14px}
+.ax-name{font-size:20px;font-weight:600;letter-spacing:.14em}
+.ax-mark{font-family:var(--font-display);font-weight:600}
+.ax-a{font-size:15px;letter-spacing:-.006em}
+.ax-content .tbl{font-size:14px}
+.ax-content .h3{font-size:clamp(20px,2vw,24px)}
+.ax-lh h1{font-family:var(--font-display);font-size:28px;font-weight:600;letter-spacing:-.012em}
+.pf-h h2{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.008em}
+.rw-top h2,.mdl h2{font-family:var(--font-display);font-size:24px;font-weight:600;letter-spacing:-.01em}
+.rsum-n{font-family:var(--font-display);font-weight:600;letter-spacing:-.02em}
+@media(max-width:900px){.ax-content .input,.ax-content .textarea{font-size:16px}}
+
+/* product names are long: a calmer headline size on the product page */
+.stack h1.h2{font-size:clamp(28px,3.2vw,40px)}

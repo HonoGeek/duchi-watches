@@ -40,13 +40,16 @@ export default function Home() {
       </div>
 
       <section><div className="wrap">
-        <Reveal className="head"><h2 className="h2">New arrivals</h2><Button to="/shop" variant="o" size="s">View all</Button></Reveal>
+        <Reveal className="head"><h2 className="h2">Just Arrived</h2><Button to="/shop" variant="o" size="s">View all</Button></Reveal>
         <Reveal d={90}><HangingRail items={fresh} /></Reveal>
-      </div></section>
+        
+      </div>
+      
+      </section>
 
       {shownCats.length > 0 && (
         <section><div className="wrap">
-          <Reveal className="head"><h2 className="h2">Shop by style</h2></Reveal>
+          <Reveal className="head"><h2 className="h2">Find Your Style</h2></Reveal>
           <div className="tiles">
             {shownCats.map((c, i) => (
               <Reveal key={c.name} d={i * 110}>

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Topbar, Header, Footer, Toast, WhatsApp } from "./Layout";
+import { useStore } from "./store";
 import { ReviewNudge } from "./ReviewDialog";
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
@@ -15,7 +16,10 @@ import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categor
 
 export default function App() {
   const { pathname } = useLocation();
+  const { user } = useStore();
   const admin = pathname.startsWith("/admin");
+  // The admin area and the signed-in customer dashboard have their own layout, so the shop header and footer are hidden there.
+  const dash = admin || (pathname.startsWith("/account") && !!user);
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   useEffect(() => {
     let raf = 0;
@@ -41,7 +45,7 @@ export default function App() {
   return (
     <>
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to content</a>
-      {!admin && <><div className="prog" id="prog" /><Topbar /><Header /></>}
+      {!dash && <><div className="prog" id="prog" /><Topbar /><Header /></>}
       <main id="main" tabIndex={-1} key={pathname} className="fd">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -78,8 +82,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!admin && <><Footer /><WhatsApp /></>}
-      {!admin && <ReviewNudge />}
+      {!dash && <><Footer /><WhatsApp /></>}
+      {!dash && <ReviewNudge />}
       <Toast />
     </>
   );
