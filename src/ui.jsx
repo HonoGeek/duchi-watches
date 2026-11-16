@@ -274,5 +274,7 @@ export const Icon = {
   cross: <svg viewBox="0 0 24 24" {...ic}><path d="M7 7l10 10M17 7L7 17" /></svg>,
   left: <svg viewBox="0 0 24 24" {...ic}><path d="M15 5l-7 7 7 7" /></svg>,
   right: <svg viewBox="0 0 24 24" {...ic}><path d="M9 5l7 7-7 7" /></svg>,
+  returns: <svg viewBox="0 0 24 24" {...ic}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>,
+  pin: <svg viewBox="0 0 24 24" {...ic}><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z" /><circle cx="12" cy="10" r="3" /></svg>,
   whatsapp: <svg viewBox="0 0 24 24" {...ic}><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7zM9 9c0 3 3 6 6 6l1-2-2-1-1 .5c-1-.5-1.5-1-2-2l.5-1-1-2z" /></svg>,
 };

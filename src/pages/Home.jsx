@@ -28,7 +28,7 @@ const CAT_DESC = {
 const DELIVERY_TIME = ""; // e.g. "Kigali: same or next day. Other districts: 2 to 3 days."
 const RETURNS = "";       // returns / exchange policy
 const WARRANTY = "";      // warranty terms
-const TRACKING = "";      // how customers track an order
+const TRACKING = "Sign in to your DUCHI account and open My orders to follow the status of your order.";
 
 export default function Home() {
   const { products, zones, cats } = useStore();
@@ -91,7 +91,7 @@ export default function Home() {
           <ul className="chk">
             {CHECKS.map((t, i) => <li key={t} style={{ "--k": i }}><span className="ci">{Icon.check}</span>{t}</li>)}
           </ul>
-          <div className="row"><Button to="/shop">Discover Our Standards</Button><Button to="/contact" variant="o">Talk to Our Team</Button></div>
+          <div className="row cta-pair"><Button to="/shop">Discover Our Standards</Button><Button to="/contact" variant="o">Talk to Our Team</Button></div>
         </Reveal>
       </div></section>
 
@@ -118,7 +118,7 @@ export default function Home() {
           <p className="sub">Have questions before making your purchase? We’ve put together answers to help you shop with confidence and understand everything about ordering, payment, and delivery.</p>
           <Button to="/contact" variant="o" size="s">Still have a question? Contact us</Button>
         </Reveal>
-        <Reveal d={120}><Faq items={faq} /></Reveal>
+        <Reveal d={120}><Faq items={faq} /><p className="faq-more"><Link className="lnk" to="/help">See all help topics</Link></p></Reveal>
       </div></section>
 
       <Newsletter />

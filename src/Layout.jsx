@@ -30,8 +30,9 @@ export function Header() {
         <nav id="mnav" className={`links${open ? " open" : ""}`}>
           <NavLink to="/" end onClick={close} style={{ "--i": 0 }}>Home</NavLink>
           <NavLink to="/shop" onClick={close} style={{ "--i": 1 }}>Shop</NavLink>
-          <NavLink to="/contact" onClick={close} style={{ "--i": 2 }}>Contact</NavLink>
-          <NavLink to="/account" onClick={close} style={{ "--i": 3 }} className="only-m">My account</NavLink>
+          <NavLink to="/help" onClick={close} style={{ "--i": 2 }}>Help</NavLink>
+          <NavLink to="/contact" onClick={close} style={{ "--i": 3 }}>Contact</NavLink>
+          <NavLink to="/account" onClick={close} style={{ "--i": 4 }} className="only-m">My account</NavLink>
         </nav>
         <div className="row" style={{ gap: 2 }}>
           <button className="ib" onClick={setTheme} aria-label="Switch light or dark mode">{theme === "dark" ? Icon.sun : Icon.moon}</button>
@@ -58,8 +59,8 @@ export function Footer() {
             </div>
           </div>
           <div><h4>Shop</h4><Link to="/shop">All watches</Link><Link to="/account">My account</Link><Link to="/cart">Cart</Link><Link to="/checkout">Checkout</Link></div>
-          <div><h4>Help</h4><Link to="/contact">Contact us</Link><a href="#" onClick={(e) => e.preventDefault()}>Delivery</a><a href="#" onClick={(e) => e.preventDefault()}>Returns</a></div>
-          <div><h4>Legal</h4><a href="#" onClick={(e) => e.preventDefault()}>Terms</a><a href="#" onClick={(e) => e.preventDefault()}>Privacy</a><a href="#" onClick={(e) => e.preventDefault()}>Warranty</a><Link to="/admin">Staff login</Link></div>
+          <div><h4>Help</h4><Link to="/contact">Contact us</Link><Link to="/help#delivery">Delivery</Link><Link to="/help#returns">Returns</Link><Link to="/help#tracking">Order tracking</Link></div>
+          <div><h4>Legal</h4><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link><Link to="/help#warranty">Warranty</Link></div>
         </div>
         <p>© 2026 DUCHI STORE, Kigali, Rwanda.</p>
       </div>

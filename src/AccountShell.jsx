@@ -82,7 +82,7 @@ export default function AccountShell() {
             <div className="ax-gl">Shop</div>
             <Link to="/shop" className="ax-a" title={axCol ? "Browse watches" : undefined}><span className="ax-ic">{AIcon.box}</span><span className="ax-lb">Browse watches</span></Link>
             <Link to="/cart" className="ax-a" title={axCol ? "Cart" : undefined}><span className="ax-ic">{AIcon.bag}</span><span className="ax-lb">Cart</span>{cartCount > 0 && <b className="ax-ct">{cartCount}</b>}</Link>
-            <Link to="/contact" className="ax-a" title={axCol ? "Help" : undefined}><span className="ax-ic">{Icon.chat}</span><span className="ax-lb">Help and contact</span></Link>
+            <Link to="/help" className="ax-a" title={axCol ? "Help" : undefined}><span className="ax-ic">{Icon.chat}</span><span className="ax-lb">Help and contact</span></Link>
           </div>
         </nav>
         <div className="ax-foot">

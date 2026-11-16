@@ -10,17 +10,18 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import Contact from "./pages/Contact";
+import Help, { Legal } from "./pages/Help";
 import Success from "./pages/Success";
 import Account, { Overview, Orders, OrderDetail, Wishlist, Addresses, Profile } from "./pages/Account";
 import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit } from "./pages/Admin";
 
 export default function App() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   const { user } = useStore();
   const admin = pathname.startsWith("/admin");
   // The admin area and the signed-in customer dashboard have their own layout, so the shop header and footer are hidden there.
   const dash = admin || (pathname.startsWith("/account") && !!user);
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps -- pages with a #section scroll themselves
   useEffect(() => {
     let raf = 0;
     const on = () => {
@@ -55,6 +56,9 @@ export default function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/login" element={<Login />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/terms" element={<Legal kind="terms" />} />
+          <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/success" element={<Success />} />
           <Route path="/account" element={<Account />}>
             <Route index element={<Overview />} />

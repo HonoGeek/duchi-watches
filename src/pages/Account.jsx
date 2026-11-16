@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStore } from "../store";
-import { Img, Button, Badge, Empty, Field, Input, Pager, Panel, Select, ProductCard, Stars, usePaged } from "../ui";
+import { Img, Button, Chip, Empty, Field, Input, Pager, Panel, Select, ProductCard, Stars, usePaged } from "../ui";
 import AccountShell from "../AccountShell";
 import { PageHead } from "../AdminShell";
 import ReviewDialog from "../ReviewDialog";
@@ -25,6 +25,9 @@ export default function Account() {
   return <AccountShell />;
 }
 
+// Order status as a small colored pill (colors live in home-refine.css, keyed by data-s).
+const StatusPill = ({ s }) => <span className="badge spill" data-s={s}>{s}</span>;
+
 const OrderRow = ({ o }) => {
   const { eligible } = useStore();
   const n = o.items.reduce((a, x) => a + x.q, 0);
@@ -33,7 +36,7 @@ const OrderRow = ({ o }) => {
     <Link className="panel orow" to={`/account/orders/${o.id}`}>
       <div><b style={{ fontWeight: 500 }}>{o.id}</b><div className="mute sm">{dt(o.date)}, {n} item{n > 1 ? "s" : ""}</div>
         {todo > 0 && <span className="rw-chip">Rate your {todo === 1 ? "watch" : `${todo} watches`}</span>}</div>
-      <Badge>{o.status}</Badge><b>{fmt(o.total)}</b>
+      <StatusPill s={o.status} /><b>{fmt(o.total)}</b>
     </Link>
   );
 };
@@ -60,13 +63,39 @@ export function Overview() {
   );
 }
 
+// Status filters for the orders list: [key, label, test]
+const ORDER_FILTERS = [
+  ["all", "All", () => true],
+  ["active", "In progress", (o) => ["Placed", "Processing", "Dispatched"].includes(o.status)],
+  ["delivered", "Delivered", (o) => o.status === "Delivered"],
+  ["cancelled", "Cancelled", (o) => o.status === "Cancelled"],
+];
+
 export function Orders() {
   const { orders } = useStore();
-  const pg = usePaged(orders, PAGE_SIZE.orders);
+  const [f, setF] = useState("all");
+  const test = ORDER_FILTERS.find((x) => x[0] === f)[2];
+  const list = orders.filter(test);
+  const pg = usePaged(list, PAGE_SIZE.orders, f); // back to page 1 when the filter changes
+  const shown = f === "all" ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}` : `${list.length} of ${orders.length} orders`;
   return (
     <>
-      <PageHead title="Orders" sub={orders.length ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}. Open one to see its delivery progress.` : "Everything you order will be listed here."} />
-      {orders.length ? <div className="olist">{pg.items.map((o) => <OrderRow key={o.id} o={o} />)}</div> : <Empty text="Your orders will appear here once you place one." />}
+      <PageHead title="Orders" sub={orders.length ? `${shown}. Open one to see its delivery progress.` : "Everything you order will be listed here."} />
+      {orders.length > 0 && (
+        <div className="row ofilters" role="group" aria-label="Filter orders by status">
+          {ORDER_FILTERS.map(([k, label, t]) => {
+            const n = orders.filter(t).length;
+            return (k === "all" || n > 0 || k === f) && (
+              <Chip key={k} on={f === k} aria-pressed={f === k} onClick={() => setF(k)}>{label}<span className="ocnt">{n}</span></Chip>
+            );
+          })}
+        </div>
+      )}
+      {orders.length === 0
+        ? <Empty text="Your orders will appear here once you place one." />
+        : list.length
+          ? <div className="olist">{pg.items.map((o) => <OrderRow key={o.id} o={o} />)}</div>
+          : <Panel><p className="mute" style={{ marginBottom: 16 }}>No orders with this status.</p><Button variant="o" size="s" onClick={() => setF("all")}>Show all orders</Button></Panel>}
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
     </>
   );
@@ -88,7 +117,7 @@ export function OrderDetail() {
     <>
       <PageHead title={`Order ${o.id}`} sub={`Placed on ${dt(o.date)}`} actions={<Button to="/account/orders" variant="o" size="s">Back to orders</Button>} />
       {o.status === "Cancelled"
-        ? <p className="badge" style={{ marginBottom: 24, display: "inline-block" }}>Cancelled</p>
+        ? <p style={{ marginBottom: 24 }}><StatusPill s="Cancelled" /></p>
         : <div className="steps">{L.map((x, i) => <div key={x} className={i <= ix ? "d" : ""}>{x}</div>)}</div>}
       {o.status !== "Cancelled" && o.status !== "Delivered" && <p className="mute sm" style={{ marginBottom: 16 }}>Once your order is delivered we will invite you to review your watch. It is optional.</p>}
       <Panel style={{ marginBottom: 16 }}>
