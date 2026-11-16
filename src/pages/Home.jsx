@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { useStore } from "../store";
-import { Img, Button, ProductCard, Newsletter, Reveal, Icon } from "../ui";
+import { Img, Button, Newsletter, Reveal, Icon } from "../ui";
 import Reviews from "../Reviews";
 import HangingRail from "../HangingRail";
 import Videos from "../Videos";
 import Hero from "../Hero";
+import Faq from "../Faq";
 import { IM } from "../data";
 import { fmt, byNewest } from "../lib";
 
@@ -23,20 +24,22 @@ const CAT_DESC = {
   "Chronograph Watches": "Precision-inspired design with distinctive details. Made for those who appreciate functionality and bold character.",
 };
 
+// Entries with an empty answer are hidden. Fill them in once the policy is confirmed.
+const DELIVERY_TIME = ""; // e.g. "Kigali: same or next day. Other districts: 2 to 3 days."
+const RETURNS = "";       // returns / exchange policy
+const WARRANTY = "";      // warranty terms
+const TRACKING = "";      // how customers track an order
+
 export default function Home() {
   const { products, zones, cats } = useStore();
   const live = products.filter((p) => p.active !== false);
   const fresh = [...live].sort(byNewest).slice(0, 6); // New arrivals: the 6 most recently added visible products
   const shownCats = cats.filter((c) => live.some((p) => p.c === c.name)); // empty categories stay hidden
   const p0 = products[0];
+  const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
   const zoneText = zones.map((z) => `${z.name} ${fmt(z.fee)}`).join(", ");
-  // Entries with an empty answer are hidden. Fill them in once the policy is confirmed.
-  const DELIVERY_TIME = ""; // e.g. "Kigali: same or next day. Other districts: 2 to 3 days."
-  const RETURNS = "";       // returns / exchange policy
-  const WARRANTY = "";      // warranty terms
-  const TRACKING = "";      // how customers track an order
   const faq = [
-    ["Where does DUCHI deliver?", `We deliver across Rwanda with one flat fee per order: ${zoneText}.`],
+    ["Where does DUCHI deliver?", zoneText ? `We deliver across Rwanda with one flat fee per order: ${zoneText}.` : "We deliver across Rwanda. The delivery fee is shown at checkout."],
     ["What payment methods do you accept?", "MTN Mobile Money, Airtel Money, card or bank transfer."],
     ["How can I place an order?", "Add your watches to the cart and enter your delivery details at checkout. We call you to confirm."],
     ["How long does delivery take?", DELIVERY_TIME],
@@ -44,10 +47,11 @@ export default function Home() {
     ["Do your watches come with a warranty?", WARRANTY],
     ["How can I track my order?", TRACKING],
     ["How can I contact customer support?", "Message us on WhatsApp or use the contact page."],
-  ].filter(([, a]) => a);
+  ]; // <Faq> drops unanswered and repeated questions
+
   return (
     <>
-      <Hero product={p0} minFee={Math.min(...zones.map((z) => z.fee))} />
+      <Hero product={p0} minFee={minFee} />
 
       <div className="mq" aria-hidden="true">
         <div className="mqt">{[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((t, i) => <span key={i}>{t}<i /></span>)}</div>
@@ -56,10 +60,7 @@ export default function Home() {
       <section><div className="wrap">
         <Reveal className="head"><div className="sh"><h2 className="h2">Just Arrived</h2><p className="sub">Explore our latest collection of carefully selected timepieces. From modern everyday essentials to sophisticated statement pieces, discover the newest additions to DUCHI.</p></div><Button to="/shop" variant="o" size="s">View all watches</Button></Reveal>
         <Reveal d={90}><HangingRail items={fresh} /></Reveal>
-        
-      </div>
-      
-      </section>
+      </div></section>
 
       {shownCats.length > 0 && (
         <section><div className="wrap">
@@ -111,9 +112,13 @@ export default function Home() {
 
       <Reviews alt={false} />
 
-      <section className="alt"><div className="wrap split" style={{ alignItems: "start" }}>
-        <Reveal className="stack"><h2 className="h2">Everything You Need to Know.</h2><p className="sub">Have questions before making your purchase? We’ve put together answers to help you shop with confidence and understand everything about ordering, payment, and delivery.</p></Reveal>
-        <Reveal d={120}>{faq.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</Reveal>
+      <section className="alt faq-sec"><div className="wrap split">
+        <Reveal className="stack faq-intro">
+          <h2 className="h2">Everything You Need to Know.</h2>
+          <p className="sub">Have questions before making your purchase? We’ve put together answers to help you shop with confidence and understand everything about ordering, payment, and delivery.</p>
+          <Button to="/contact" variant="o" size="s">Still have a question? Contact us</Button>
+        </Reveal>
+        <Reveal d={120}><Faq items={faq} /></Reveal>
       </div></section>
 
       <Newsletter />

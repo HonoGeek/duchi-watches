@@ -1,4 +1,4 @@
-import { Children, cloneElement, useEffect, useRef, useState } from "react";
+import { Children, cloneElement, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { photo, fmt } from "./lib";
 import { useStore } from "./store";
@@ -89,6 +89,42 @@ export function Reveal({ as: Tag = "div", d = 0, className = "", style, children
   return <Tag ref={ref} className={`rv${on ? " in" : ""} ${className}`.trim()} style={{ "--d": `${d}ms`, ...style }} {...rest}>{children}</Tag>;
 }
 
+/* Horizontal carousel controls for any scroll-snap row.
+   const { ref, go, canPrev, canNext, onKeyDown } = useCarousel(dep);
+   Put ref on the scrolling element, call go(-1) / go(1) from the arrows and use canPrev / canNext to disable them.
+   Touch, trackpad and keyboard scrolling keep working because the row is still native overflow scrolling. */
+export function useCarousel(dep) {
+  const ref = useRef(null);
+  const [can, setCan] = useState({ prev: false, next: false });
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const prev = el.scrollLeft > 4, next = el.scrollLeft < el.scrollWidth - el.clientWidth - 4;
+    setCan((c) => (c.prev === prev && c.next === next ? c : { prev, next }));
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); ro?.disconnect(); };
+  }, [update, dep]);
+  const go = (d) => {
+    const el = ref.current;
+    if (!el) return;
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({ left: d * el.clientWidth * 0.85, behavior: calm ? "auto" : "smooth" });
+  };
+  const onKeyDown = (e) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+  };
+  return { ref, go, canPrev: can.prev, canNext: can.next, onKeyDown };
+}
+
 export const Stars = ({ n }) => (
   <div className="st" role="img" aria-label={`${n} out of 5 stars`}>
     {[0, 1, 2, 3, 4].map((k) => (
@@ -168,27 +204,52 @@ export function ProductCard({ p, view = "grid" }) {
         <div className="mute sm">{p.s}</div>
         {rs && <div className="crat" aria-label={`Rated ${rs.avg.toFixed(1)} out of 5 from ${rs.count} reviews`}><Stars n={Math.round(rs.avg)} /><span>{rs.avg.toFixed(1)} ({rs.count})</span></div>}
         {list && <div className="mute sm cat">{p.c}{p.spec?.movement ? ` · ${p.spec.movement}` : ""}</div>}
-        <div className="price" style={{ marginTop: 4 }}>{fmt(p.p)}</div>
-        {list && p.stock > 0 && <StockLeft p={p} />}
+        <div className="price">{fmt(p.p)}</div>
+        {p.stock > 0 && (list || p.stock <= 5) && <StockLeft p={p} />}
       </Link>
     </div>
   );
 }
 
+const SUBS_KEY = "duchi-subscribers";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Newsletter sign-up. Validates the address, rejects duplicates and confirms in words.
+// The address is kept in this browser only. Connect a mailing service where the comment below says so to reach real subscribers.
 export function Newsletter() {
-  const [sent, setSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [st, setSt] = useState({ kind: "idle", msg: "" }); // idle | error | done
   const { showToast } = useStore();
+  const fail = (msg) => setSt({ kind: "error", msg });
+  const submit = (e) => {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!v) return fail("Enter your email address.");
+    if (!EMAIL_RE.test(v)) return fail("That email address does not look right. Check it and try again.");
+    let again = false;
+    try {
+      const list = JSON.parse(localStorage.getItem(SUBS_KEY) || "[]");
+      again = list.includes(v);
+      // To email real subscribers, send `v` to your mailing service here instead of (or as well as) this browser list.
+      if (!again) localStorage.setItem(SUBS_KEY, JSON.stringify([...list, v]));
+    } catch { return fail("We could not save your email. Please try again."); }
+    setSt({ kind: "done", msg: again ? "You are already on the list. Thank you!" : "You are on the list. Thank you!" });
+    showToast(again ? "You are already on the list" : "You are on the list. Thank you!");
+  };
   return (
     <section className="alt news">
       <div className="wrap">
         <h2 className="h2">Stay Ahead of Time.</h2>
         <p className="sub" style={{ margin: "14px auto 0" }}>Be the first to discover new arrivals, exclusive offers, and the latest additions to our collection. Get the latest from DUCHI, delivered straight to your inbox.</p>
-        {sent ? <p style={{ marginTop: 28 }}>Thanks, you are on the list.</p> : (
-          <form onSubmit={(e) => { e.preventDefault(); setSent(true); showToast("You are on the list. Thank you!"); }}>
-            <Input type="email" required placeholder="Your email address" aria-label="Email" />
-            <Button>Join the List</Button>
+        {st.kind !== "done" && (
+          <form noValidate onSubmit={submit}>
+            <Input type="email" name="email" inputMode="email" autoComplete="email" placeholder="Your email address" aria-label="Email address"
+              value={email} onChange={(e) => { setEmail(e.target.value); if (st.kind === "error") setSt({ kind: "idle", msg: "" }); }}
+              aria-invalid={st.kind === "error"} aria-describedby="news-msg" />
+            <Button type="submit">Join the List</Button>
           </form>
         )}
+        <p id="news-msg" className={`news-msg${st.kind === "error" ? " err" : ""}${st.kind === "done" ? " ok" : ""}`} role="status" aria-live="polite">{st.msg}</p>
       </div>
     </section>
   );

@@ -15,10 +15,20 @@ const mmss = (n) => {
 // Modal player: click the backdrop, press Escape or use the close button to leave. Page scroll is locked while open.
 function Lightbox({ src, poster, title, onClose, onBad }) {
   const closeRef = useRef(null);
+  const boxRef = useRef(null);
   const cb = useRef(onClose);
   cb.current = onClose;
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") cb.current(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") { cb.current(); return; }
+      if (e.key !== "Tab") return;
+      // keep keyboard focus inside the player while it is open
+      const f = [...(boxRef.current?.querySelectorAll("button, video[controls]") || [])].filter((x) => !x.disabled);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     const prev = document.body.style.overflow;
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -26,7 +36,7 @@ function Lightbox({ src, poster, title, onClose, onBad }) {
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, []);
   return createPortal(
-    <div className="vmod" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+    <div className="vmod" role="dialog" aria-modal="true" aria-label={title} onClick={onClose} ref={boxRef}>
       <div className="vmod-in" onClick={(e) => e.stopPropagation()}>
         <video src={src} poster={poster} controls autoPlay playsInline onError={onBad} />
         <div className="vmod-cap">{title}</div>
@@ -75,11 +85,12 @@ function Clip({ v }) {
 export default function Videos() {
   const { videos } = useStore();
   const list = videos.slice(0, 4);
+  if (!list.length) return null;
   return (
     <section className="alt"><div className="wrap">
       <Reveal className="head"><div className="sh"><h2 className="h2">More Than Just a Watch</h2><p className="sub">A closer look at the details that make every timepiece special. Explore the craftsmanship, finishing, movement, and versatility of our watches through real-life moments.</p></div></Reveal>
       <div className="vrow">
-        {list.map((v, i) => <Reveal key={i} d={i * 90} className="vcw"><Clip v={v} /></Reveal>)}
+        {list.map((v, i) => <Reveal key={v.id ?? v.title ?? i} d={i * 90} className="vcw"><Clip v={v} /></Reveal>)}
       </div>
     </div></section>
   );
