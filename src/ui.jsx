@@ -181,12 +181,12 @@ export function Newsletter() {
   return (
     <section className="alt news">
       <div className="wrap">
-        <h2 className="h2">Be first to see new drops.</h2>
-        <p className="lead" style={{ margin: "14px auto 0" }}>New arrivals and offers, straight to your inbox.</p>
+        <h2 className="h2">Stay Ahead of Time.</h2>
+        <p className="sub" style={{ margin: "14px auto 0" }}>Be the first to discover new arrivals, exclusive offers, and the latest additions to our collection. Get the latest from DUCHI, delivered straight to your inbox.</p>
         {sent ? <p style={{ marginTop: 28 }}>Thanks, you are on the list.</p> : (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); showToast("You are on the list. Thank you!"); }}>
-            <Input type="email" required placeholder="Your email" aria-label="Email" />
-            <Button>Subscribe</Button>
+            <Input type="email" required placeholder="Your email address" aria-label="Email" />
+            <Button>Join the DUCHI List</Button>
           </form>
         )}
       </div>

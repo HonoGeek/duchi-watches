@@ -15,9 +15,10 @@ export default function Reviews({ alt = true }) {
     <section className={alt ? "alt" : ""}>
       <div className="wrap">
         <Reveal className="head" style={{ alignItems: "center" }}>
-          <div>
-            <h2 className="h2">Customer reviews</h2>
-            <div className="row" style={{ marginTop: 10 }}>
+          <div className="sh">
+            <h2 className="h2">Stories From Our Customers</h2>
+            <p className="sub">The best measure of our work is the experience of the people who choose DUCHI. Discover what our customers say about their watches, shopping experience, and service.</p>
+            <div className="row" style={{ marginTop: 16 }}>
               <Stars n={Math.round(avg)} />
               <span className="mute sm">{avg.toFixed(1)} from {published.length} reviews</span>
             </div>
@@ -33,10 +34,10 @@ export default function Reviews({ alt = true }) {
               <article className="rc">
                 <Stars n={r.r} />
                 <p>“{r.t}”</p>
-                {r.img && <div className="rimg"><Img id={r.img} alt={`Photo from ${r.n}`} w={500} /></div>}
+                {r.img && <div className="rimg"><Img id={r.img} alt={`Photo from ${r.n.split(" ")[0]}`} w={500} /></div>}
                 <div className="rby">
                   <div className="av">{r.n[0]}</div>
-                  <div><b style={{ fontWeight: 500 }}>{r.n}</b><div className="mute sm"><Link to={`/product/${r.pid}`}>{products[r.pid]?.n}</Link>{r.verified ? " · Verified buyer" : ""}</div></div>
+                  <div><b style={{ fontWeight: 500 }}>{r.n.split(" ")[0]}</b><div className="mute sm"><Link to={`/product/${r.pid}`}>{products[r.pid]?.n}</Link>{r.verified ? " · Verified buyer" : ""}</div></div>
                 </div>
               </article>
             </Reveal>

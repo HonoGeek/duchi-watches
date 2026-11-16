@@ -3,7 +3,7 @@ import { useStore } from "./store";
 import { Img, Reveal } from "./ui";
 import { useVideoUrl } from "./videoDb";
 
-// "See them in motion": 4 videos in one row. Tap a card to play it in place.
+// "More Than Just a Watch": 4 videos in one row. Tap a card to play it in place.
 // Upload the videos in Admin > Videos. On phones the row scrolls sideways so it stays one row.
 function Clip({ v }) {
   const [play, setPlay] = useState(false);
@@ -39,7 +39,7 @@ export default function Videos() {
   const list = videos.slice(0, 4);
   return (
     <section className="alt"><div className="wrap">
-      <Reveal className="head"><h2 className="h2">See them in motion</h2></Reveal>
+      <Reveal className="head"><div className="sh"><h2 className="h2">More Than Just a Watch</h2><p className="sub">A closer look at the details that make every timepiece special. Explore the craftsmanship, finishing, movement, and versatility of our watches through real-life moments.</p></div></Reveal>
       <div className="vrow">
         {list.map((v, i) => <Reveal key={i} d={i * 90} className="vcw"><Clip v={v} /></Reveal>)}
       </div>

@@ -1146,3 +1146,20 @@ summary{font-size:17px}
 
 /* product names are long: a calmer headline size on the product page */
 .stack h1.h2{font-size:clamp(28px,3.2vw,40px)}
+
+/* The DUCHI Difference: benefit cards */
+.bn{display:grid}
+.bi{display:flex;gap:18px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--line)}
+.bi:first-child{padding-top:0}.bi:last-child{border-bottom:0;padding-bottom:0}
+.bi .ti{width:48px;height:48px;border-radius:14px;margin:0;flex:none}
+.bi .ti svg{width:22px;height:22px}
+.bi h3{font:600 16px Inter,sans-serif;margin:2px 0 4px;letter-spacing:0}
+@media(hover:hover){.bi:hover .ti{transform:translateY(-4px) rotate(-6deg);background:var(--gold);color:#151515}}
+
+/* Section subtitles, Apple-style: calm size, tight measure, balanced wrap */
+.sub{font-size:clamp(17px,1.5vw,21px);line-height:1.38;letter-spacing:.011em;font-weight:400;color:var(--mute);max-width:34em;margin:12px 0 0;text-wrap:pretty}
+.stack>.sub{margin:0}
+.head>.sh{flex:1 1 360px;min-width:0}
+.head>.btn{flex:none}
+.head{align-items:flex-end}
+@media(max-width:600px){.sub{font-size:17px;line-height:1.42}}
