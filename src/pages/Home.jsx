@@ -34,13 +34,15 @@ export default function Home() {
   const DELIVERY_TIME = ""; // e.g. "Kigali: same or next day. Other districts: 2 to 3 days."
   const RETURNS = "";       // returns / exchange policy
   const WARRANTY = "";      // warranty terms
+  const TRACKING = "";      // how customers track an order
   const faq = [
     ["Where does DUCHI deliver?", `We deliver across Rwanda with one flat fee per order: ${zoneText}.`],
-    ["How long does delivery take?", DELIVERY_TIME],
     ["What payment methods do you accept?", "MTN Mobile Money, Airtel Money, card or bank transfer."],
     ["How can I place an order?", "Add your watches to the cart and enter your delivery details at checkout. We call you to confirm."],
+    ["How long does delivery take?", DELIVERY_TIME],
     ["Can I return or exchange a watch?", RETURNS],
     ["Do your watches come with a warranty?", WARRANTY],
+    ["How can I track my order?", TRACKING],
     ["How can I contact customer support?", "Message us on WhatsApp or use the contact page."],
   ].filter(([, a]) => a);
   return (
@@ -101,7 +103,7 @@ export default function Home() {
           {DIFF.map(([ic, h, p]) => (
             <div className="bi" key={h}>
               <div className="ti">{Icon[ic]}</div>
-              <div><h3>{h}</h3><p className="mute sm">{p}</p></div>
+              <div><h3>{h}</h3><p className="mute">{p}</p></div>
             </div>
           ))}
         </Reveal>

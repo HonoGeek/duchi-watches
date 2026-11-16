@@ -186,7 +186,7 @@ export function Newsletter() {
         {sent ? <p style={{ marginTop: 28 }}>Thanks, you are on the list.</p> : (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); showToast("You are on the list. Thank you!"); }}>
             <Input type="email" required placeholder="Your email address" aria-label="Email" />
-            <Button>Join the DUCHI List</Button>
+            <Button>Join the List</Button>
           </form>
         )}
       </div>
