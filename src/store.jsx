@@ -28,6 +28,10 @@ export function StoreProvider({ children }) {
   const [staff, setStaff] = usePersist("duchi-staff", SEED_STAFF);
   const [payCfg, setPayCfg] = usePersist("duchi-paycfg", SEED_PAYCFG);
   const [videos, setVideos] = usePersist("duchi-videos", SEED_VIDEOS);
+  const [messages, setMessages] = usePersist("duchi-messages", []);       // Contact page messages
+  const [subsRaw, setSubs] = usePersist("duchi-subscribers", []);           // newsletter sign-ups
+  // Older sign-ups were saved as plain email strings without a date: show them as { email, date: "" }.
+  const subscribers = useMemo(() => subsRaw.map((s) => (typeof s === "string" ? { email: s, date: "" } : s)), [subsRaw]);
   const [adm, setAdm] = usePersist("duchi-adm", null);
   const [axCol, setAxCol] = usePersist("duchi-ax-col", false); // admin sidebar collapsed?
   const [audit, setAudit] = usePersist("duchi-audit", []);
@@ -205,6 +209,42 @@ export function StoreProvider({ children }) {
     showToast(status === "Delivered" ? "Order marked as delivered. The customer will be invited to review it." : "Status updated");
   };
 
+  // ----- contact messages (Contact page to Admin > Messages)
+  const addMessage = ({ name, email, phone, text }) => {
+    const m = {
+      id: "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      name: String(name).trim(), email: String(email).trim().toLowerCase(), phone: String(phone || "").trim(), text: String(text).trim(),
+      date: new Date().toISOString(), read: false,
+    };
+    setMessages((l) => [m, ...l]);
+    log(`New message from ${m.name}`, m.email);
+    return true;
+  };
+  const setMessageRead = (id, read, silent = false) => {
+    setMessages((l) => l.map((x) => (x.id === id ? { ...x, read } : x)));
+    if (!silent) showToast(read ? "Message marked as read" : "Message marked as unread");
+  };
+  const deleteMessage = (id) => {
+    const m = messages.find((x) => x.id === id);
+    setMessages((l) => l.filter((x) => x.id !== id));
+    if (m) log(`Deleted a message from ${m.name}`);
+    showToast("Message deleted");
+  };
+
+  // ----- email list (Home page sign-up form to Admin > Email list)
+  // Returns "added" or "exists". To email real subscribers, also send the address to your mailing service here.
+  const addSubscriber = (email) => {
+    const v = String(email).trim().toLowerCase();
+    if (subscribers.some((s) => s.email.toLowerCase() === v)) return "exists";
+    setSubs([...subscribers, { email: v, date: new Date().toISOString() }]);
+    return "added";
+  };
+  const removeSubscriber = (email) => {
+    setSubs(subscribers.filter((s) => s.email !== email));
+    log(`Removed ${email} from the email list`);
+    showToast("Removed from the email list");
+  };
+
   // ----- admin
   const setPayStatus = (id, payStatus) => {
     setAllOrders((a) => a.map((x) => (x.id === id ? { ...x, payStatus } : x)));
@@ -331,6 +371,7 @@ export function StoreProvider({ children }) {
     reviews, published, reviewStats, eligible, skipRev, addReview, updateReview, deleteReview, setReviewStatus, replyReview, skipReview,
     cats, addCategory, renameCategory, deleteCategory, moveCategory, setCategoryImage,
     me, updateAdminProfile, changeAdminPassword, axCol, setAxCol,
+    messages, addMessage, setMessageRead, deleteMessage, subscribers, addSubscriber, removeSubscriber,
     showToast, hideToast, setTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

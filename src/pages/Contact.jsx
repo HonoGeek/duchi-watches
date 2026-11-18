@@ -1,8 +1,16 @@
 import { useState } from "react";
+import { useStore } from "../store";
 import { Button, Field, Input, Panel, Textarea } from "../ui";
 
 export default function Contact() {
+  const { addMessage } = useStore();
   const [sent, setSent] = useState(false);
+  const submit = (e) => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.currentTarget));
+    addMessage({ name: d.name, email: d.email, phone: d.phone, text: d.message });
+    setSent(true);
+  };
   return (
     <section style={{ paddingTop: 56 }}><div className="wrap split" style={{ alignItems: "start" }}>
       <div className="stack">
@@ -15,15 +23,15 @@ export default function Contact() {
         </Panel>
       </div>
       {sent ? (
-        <Panel><h2 className="h3">Message sent</h2><p className="mute">Thanks, we will get back to you soon.</p></Panel>
+        <Panel className="stack"><h2 className="h3">Message sent</h2><p className="mute">Thanks, we will get back to you soon.</p><div><Button type="button" variant="o" size="s" onClick={() => setSent(false)}>Send another message</Button></div></Panel>
       ) : (
-        <form className="stack" onSubmit={(e) => { e.preventDefault(); setSent(true); }}>
-          <Field label="Name"><Input required /></Field>
+        <form className="stack" onSubmit={submit}>
+          <Field label="Name"><Input name="name" required maxLength={80} autoComplete="name" /></Field>
           <div className="two">
-            <Field label="Email"><Input type="email" required /></Field>
-            <Field label="Phone"><Input type="tel" /></Field>
+            <Field label="Email"><Input name="email" type="email" required autoComplete="email" /></Field>
+            <Field label="Phone"><Input name="phone" type="tel" autoComplete="tel" /></Field>
           </div>
-          <Field label="Message"><Textarea rows={5} required /></Field>
+          <Field label="Message"><Textarea name="message" rows={5} required maxLength={1000} /></Field>
           <Button>Send message</Button>
         </form>
       )}

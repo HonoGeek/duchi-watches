@@ -83,8 +83,8 @@ export const SEED_PAYCFG = {
   airtel: { code: "000000", tpl: "*500#" },
 };
 export const PERM = {
-  Admin: ["", "orders", "products", "categories", "reviews", "videos", "coupons", "shipping", "payments", "team", "audit", "settings"],
-  Manager: ["", "orders", "products", "categories", "reviews", "videos", "coupons", "shipping", "audit", "settings"],
+  Admin: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "coupons", "shipping", "payments", "team", "audit", "settings"],
+  Manager: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "coupons", "shipping", "audit", "settings"],
   Staff: ["", "orders", "products", "settings"],
 };
 

@@ -13,7 +13,7 @@ import Contact from "./pages/Contact";
 import Help, { Legal } from "./pages/Help";
 import Success from "./pages/Success";
 import Account, { Overview, Orders, OrderDetail, Wishlist, Addresses, Profile } from "./pages/Account";
-import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit } from "./pages/Admin";
+import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit, Messages as AdminMessages, Subscribers } from "./pages/Admin";
 
 export default function App() {
   const { pathname, hash } = useLocation();
@@ -81,6 +81,8 @@ export default function App() {
             <Route path="team" element={<Team />} />
             <Route path="audit" element={<Audit />} />
             <Route path="reviews" element={<ReviewsAdmin />} />
+            <Route path="messages" element={<AdminMessages />} />
+            <Route path="subscribers" element={<Subscribers />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

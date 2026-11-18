@@ -211,28 +211,21 @@ export function ProductCard({ p, view = "grid" }) {
   );
 }
 
-const SUBS_KEY = "duchi-subscribers";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Newsletter sign-up. Validates the address, rejects duplicates and confirms in words.
-// The address is kept in this browser only. Connect a mailing service where the comment below says so to reach real subscribers.
+// Addresses are saved by the store (see addSubscriber) and listed in Admin > Email list.
 export function Newsletter() {
   const [email, setEmail] = useState("");
   const [st, setSt] = useState({ kind: "idle", msg: "" }); // idle | error | done
-  const { showToast } = useStore();
+  const { showToast, addSubscriber } = useStore();
   const fail = (msg) => setSt({ kind: "error", msg });
   const submit = (e) => {
     e.preventDefault();
     const v = email.trim().toLowerCase();
     if (!v) return fail("Enter your email address.");
     if (!EMAIL_RE.test(v)) return fail("That email address does not look right. Check it and try again.");
-    let again = false;
-    try {
-      const list = JSON.parse(localStorage.getItem(SUBS_KEY) || "[]");
-      again = list.includes(v);
-      // To email real subscribers, send `v` to your mailing service here instead of (or as well as) this browser list.
-      if (!again) localStorage.setItem(SUBS_KEY, JSON.stringify([...list, v]));
-    } catch { return fail("We could not save your email. Please try again."); }
+    const again = addSubscriber(v) === "exists";
     setSt({ kind: "done", msg: again ? "You are already on the list. Thank you!" : "You are on the list. Thank you!" });
     showToast(again ? "You are already on the list" : "You are on the list. Thank you!");
   };

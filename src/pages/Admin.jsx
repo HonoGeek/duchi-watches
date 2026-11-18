@@ -6,11 +6,12 @@ import { IM, PAY_STATUS, PERM, ST } from "../data";
 import { ussd, waLink } from "../pay";
 import { fmt, dt, tm, readImage, byNewest } from "../lib";
 import ProductForm from "../ProductForm";
+import DateRange, { ymd } from "../DateRange";
 import AdminShell, { PageHead } from "../AdminShell";
 import { MAX_VIDEO, deleteVideo, mmss, probeVideo, putVideo } from "../videoDb";
 
 // How many rows each admin list shows per page.
-const PAGE_SIZE = { orders: 8, products: 8, coupons: 8, team: 8, audit: 10, reviews: 8 };
+const PAGE_SIZE = { orders: 8, products: 8, coupons: 8, team: 8, audit: 10, reviews: 8, messages: 8, subscribers: 10 };
 
 const None = ({ text }) => <Panel><p className="mute">{text}</p></Panel>;
 // Every admin page starts with the same header: a title, an optional line of help text and optional buttons.
@@ -470,6 +471,109 @@ export function ReviewsAdmin() {
   );
 }
 
+export function Messages() {
+  const { messages, setMessageRead, deleteMessage } = useStore();
+  const [f, setF] = useState("All");
+  const [q, setQ] = useState("");
+  const unread = messages.filter((m) => !m.read).length;
+  const match = messages.filter((m) =>
+    (f === "All" || (f === "Unread" && !m.read) || (f === "Read" && m.read))
+    && `${m.name} ${m.email} ${m.phone} ${m.text}`.toLowerCase().includes(q.trim().toLowerCase()))
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // newest first
+  const pg = usePaged(match, PAGE_SIZE.messages, `${f}|${q}`);
+  return (
+    <Allow sec="messages">
+      <Title sub={`${messages.length} ${messages.length === 1 ? "message" : "messages"} from the Contact page${unread ? `, ${unread} not read yet` : ""}. Newest first.`}>Messages</Title>
+      <div className="ptool">
+        <label className="psearch">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search messages" aria-label="Search messages" />
+        </label>
+        <div className="row chips">{["All", "Unread", "Read"].map((c) => <Chip key={c} on={c === f} onClick={() => setF(c)}>{c}</Chip>)}</div>
+      </div>
+      {pg.items.length ? (
+        <Table head={["Message", "Contact", "Received", "Status", ""]}>
+          {pg.items.map((m) => (
+            <tr key={m.id}>
+              <td><div className="rva">
+                <div className="rva-h"><b>{m.name}</b></div>
+                <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.text}</p>
+              </div></td>
+              <td><div className="contact">
+                <a href={`mailto:${m.email}`}>{m.email}</a>
+                {m.phone && <a href={`tel:${m.phone}`}>{m.phone}</a>}
+                {m.phone && <a href={waLink(m.phone)} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+              </div></td>
+              <td className="nw">{tm(m.date)}</td>
+              <td><span className={`pill ${m.read ? "off" : "warn"}`}>{m.read ? "Read" : "New"}</span></td>
+              <td><div className="row" style={{ flexWrap: "nowrap" }}>
+                <Button variant="o" size="s" href={`mailto:${m.email}?subject=${encodeURIComponent("Your message to DUCHI")}`} onClick={() => { if (!m.read) setMessageRead(m.id, true, true); }}>Reply</Button>
+                <Button variant="o" size="s" onClick={() => setMessageRead(m.id, !m.read)}>{m.read ? "Mark unread" : "Mark read"}</Button>
+                <Button variant="o" size="s" onClick={() => { if (window.confirm(`Delete the message from ${m.name}?`)) deleteMessage(m.id); }}>Delete</Button>
+              </div></td>
+            </tr>
+          ))}
+        </Table>
+      ) : <None text={messages.length ? "No messages match your search." : "Messages sent from the Contact page will be listed here."} />}
+      <Pager {...pg} onPage={pg.setPage} noun="messages" />
+    </Allow>
+  );
+}
+
+// A spreadsheet can run text that starts with = + - or @ as a formula, so those cells get a leading apostrophe.
+const csvCell = (v) => { const t = String(v); return `"${(/^[=+\-@]/.test(t) ? "'" + t : t).replace(/"/g, '""')}"`; };
+
+export function Subscribers() {
+  const { subscribers, removeSubscriber, showToast } = useStore();
+  const [q, setQ] = useState("");
+  // Newest first. Sign-ups from before dates were recorded have no date and keep the order they were saved in.
+  const all = subscribers.map((s, i) => ({ ...s, i })).sort((a, b) => (new Date(b.date || 0) - new Date(a.date || 0)) || b.i - a.i);
+  const match = all.filter((s) => s.email.toLowerCase().includes(q.trim().toLowerCase()));
+  const pg = usePaged(match, PAGE_SIZE.subscribers, q);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(all.map((s) => s.email).join(", ")); showToast(`${all.length} email addresses copied`); }
+    catch { showToast("Copy is not available on this device"); }
+  };
+  const download = () => {
+    const rows = all.map((s) => `${csvCell(s.email)},${csvCell(s.date ? new Date(s.date).toISOString() : "")}`);
+    const url = URL.createObjectURL(new Blob(["\ufeffEmail,Signed up\r\n" + rows.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `duchi-email-list-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <Allow sec="subscribers">
+      <Title sub={`${all.length} ${all.length === 1 ? "person has" : "people have"} joined to hear about new arrivals. Newest first.`}
+        actions={all.length > 0 && <><Button variant="o" size="s" onClick={copy}>Copy emails</Button><Button size="s" onClick={download}>Download CSV</Button></>}>Email list</Title>
+      {all.length > 0 && (
+        <div className="ptool">
+          <label className="psearch">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search emails" aria-label="Search emails" />
+          </label>
+        </div>
+      )}
+      {pg.items.length ? (
+        <Table head={["Email", "Signed up", ""]}>
+          {pg.items.map((s) => (
+            <tr key={s.email}>
+              <td><a href={`mailto:${s.email}`}>{s.email}</a></td>
+              <td className="nw">{s.date ? dt(s.date) : <span className="mute">Date not recorded</span>}</td>
+              <td><Button variant="o" size="s" onClick={() => { if (window.confirm(`Remove ${s.email} from the email list?`)) removeSubscriber(s.email); }}>Remove</Button></td>
+            </tr>
+          ))}
+        </Table>
+      ) : <None text={all.length ? "No emails match your search." : "People who join from the \"Stay Ahead of Time\" form on the Home page will be listed here."} />}
+      <Pager {...pg} onPage={pg.setPage} noun="emails" />
+      <Panel className="sm" style={{ marginTop: 20 }}>
+        <b style={{ fontWeight: 500 }}>Using this list</b>
+        <p className="mute">Download the CSV to import it into your mailing service, or copy the addresses to paste into an email. When you remove someone, they can sign up again from the Home page.</p>
+      </Panel>
+    </Allow>
+  );
+}
+
 export function Coupons() {
   const { coupons, addCoupon, toggleCoupon } = useStore();
   const pg = usePaged(coupons, PAGE_SIZE.coupons);
@@ -557,7 +661,7 @@ export function Team() {
       <Pager {...pg} onPage={pg.setPage} noun="team members" />
       <Panel className="sm" style={{ marginTop: 20 }}>
         <b style={{ fontWeight: 500 }}>What each role can do</b>
-        <p className="mute">Admin: everything, including team and roles. Manager: orders, products, coupons, shipping and the audit log. Staff: view orders, update order status and stock.</p>
+        <p className="mute">Admin: everything, including team and roles. Manager: orders, products, messages, the email list, coupons, shipping and the audit log. Staff: view orders, update order status and stock.</p>
       </Panel>
     </Allow>
   );
@@ -565,15 +669,38 @@ export function Team() {
 
 export function Audit() {
   const { audit } = useStore();
-  const pg = usePaged(audit, PAGE_SIZE.audit);
+  const [q, setQ] = useState("");
+  const [range, setRange] = useState({ from: "", to: "" }); // one picker: a start day and an optional end day
+  const needle = q.trim().toLowerCase();
+  const lo = range.from, hi = range.to || range.from; // only a start day means that one day
+  // How many actions happened on each day: the calendar puts a green dot on days that have any.
+  const counts = {};
+  audit.forEach((x) => { const d = ymd(new Date(x.t)); counts[d] = (counts[d] || 0) + 1; });
+  // The search looks at who, what, and the date and time exactly as shown in the table (for example "18 Nov" or "14:30").
+  const match = audit.filter((x) => {
+    const d = ymd(new Date(x.t));
+    return (!lo || (d >= lo && d <= hi)) && (!needle || `${x.w} ${x.m} ${tm(x.t)} ${dt(x.t)}`.toLowerCase().includes(needle));
+  });
+  const pg = usePaged(match, PAGE_SIZE.audit, `${q}|${lo}|${hi}`);
+  const filtered = !!(needle || lo);
   return (
     <Allow sec="audit">
       <Title sub="A record of what was done in the admin area, newest first.">Audit log</Title>
-      {audit.length ? (
+      {audit.length > 0 && (
+        <div className="ptool">
+          <label className="psearch">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by person, action or time" aria-label="Search the audit log" />
+          </label>
+          <DateRange value={range} onChange={setRange} counts={counts} />
+          {filtered && <button type="button" className="lnk" onClick={() => { setQ(""); setRange({ from: "", to: "" }); }}>Clear filters</button>}
+        </div>
+      )}
+      {pg.items.length ? (
         <Table head={["When", "Who", "Action"]}>
           {pg.items.map((x, i) => <tr key={x.t + i}><td>{tm(x.t)}</td><td>{x.w}</td><td>{x.m}</td></tr>)}
         </Table>
-      ) : <None text="Actions taken in the admin area will be listed here." />}
+      ) : <None text={audit.length ? "No entries match your filters." : "Actions taken in the admin area will be listed here."} />}
       <Pager {...pg} onPage={pg.setPage} noun="entries" />
     </Allow>
   );
