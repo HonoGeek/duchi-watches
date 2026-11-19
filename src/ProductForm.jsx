@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useStore } from "./store";
 import { Img, Button, Field, Icon, Input, Select, Textarea } from "./ui";
 import { BADGES, DESC_MAX, IM, MAX_HIGHLIGHTS, MAX_PHOTOS, SPEC_FIELDS } from "./data";
-import { fmt, readImage, storageUsed, STORAGE_LIMIT } from "./lib";
+import { dtm, fmt, readImage, storageUsed, STORAGE_LIMIT } from "./lib";
 
 const emptySpec = () => Object.fromEntries(SPEC_FIELDS.map(([k]) => [k, ""]));
 const dataLen = (list) => list.reduce((a, m) => a + (String(m).startsWith("data:") ? m.length : 0), 0);
@@ -15,8 +15,6 @@ const Row = ({ label, hint, children }) => (
 );
 
 export default function ProductForm({ p, onDone }) {
-  const [err, setErr] = useState(null); // { m: message, id: section that needs attention }
-  const Err = ({ id }) => (err?.id === id ? <div className="pf-err" role="alert">{err.m}</div> : null);
   const { products, cats, saveProduct, showToast } = useStore();
   const isNew = !p;
   const init = useMemo(() => ({
@@ -29,6 +27,7 @@ export default function ProductForm({ p, onDone }) {
   const [f, setF] = useState(init);
   const [busy, setBusy] = useState(0);
   const [link, setLink] = useState("");
+  const [err, setErr] = useState("");
   const [drag, setDrag] = useState(-1);
   const [over, setOver] = useState(false);
   const hlRef = useRef(null);
@@ -54,7 +53,7 @@ export default function ProductForm({ p, onDone }) {
     if (!files.length) { if (all.length) showToast("Please choose image files (JPG, PNG or WebP)"); return; }
     const take = files.slice(0, Math.max(0, room));
     if (take.length < files.length) showToast(`Only ${MAX_PHOTOS} photos fit. ${files.length - take.length} not added.`);
-    setBusy(take.length); setErr(null);
+    setBusy(take.length); setErr("");
     const out = [];
     for (const file of take) {
       if (file.size > 20e6) showToast(`${file.name} is too large (20 MB at most)`);
@@ -68,7 +67,7 @@ export default function ProductForm({ p, onDone }) {
     if (!u) return;
     if (!/^(https?:\/\/|\/)/.test(u)) { showToast("Image links start with https://"); return; }
     if (room <= 0) { showToast(`Only ${MAX_PHOTOS} photos fit`); return; }
-    setF((x) => ({ ...x, im: [...x.im, u] })); setLink(""); setErr(null);
+    setF((x) => ({ ...x, im: [...x.im, u] })); setLink(""); setErr("");
   };
   const mv = (i, d) => setF((x) => {
     const j = i + d;
@@ -96,7 +95,7 @@ export default function ProductForm({ p, onDone }) {
   const submit = (e) => {
     e.preventDefault();
     const price = Number(f.p), stock = Math.floor(Number(f.stock));
-    const fail = (m, id) => { setErr({ m, id }); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+    const fail = (m, id) => { setErr(m); document.getElementById(id || "pf-err")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
     if (!f.n.trim() || !f.s.trim()) return fail("Add a name and a dial or colour.", "pf-basics");
     if (!f.c) return fail("Choose a category. Add one in Categories first if the list is empty.", "pf-basics");
     if (!(price > 0)) return fail("Add a price above 0.", "pf-price");
@@ -105,7 +104,6 @@ export default function ProductForm({ p, onDone }) {
     if (projected > STORAGE_LIMIT * 0.97) return fail("These photos are too big for the browser storage. Remove a photo or use image links.", "pf-photos");
     saveProduct({
       id: isNew ? products.length : p.id, n: f.n.trim(), s: f.s.trim(), c: f.c, p: price, stock, tag: f.tag.trim(), active: f.active,
-      createdAt: isNew ? Date.now() : p.createdAt,
       im: f.im, desc: f.desc.trim(), highlights: f.highlights.map((h) => h.trim()).filter(Boolean), box: f.box.trim(),
       spec: Object.fromEntries(SPEC_FIELDS.map(([k]) => [k, (f.spec[k] || "").trim()])),
     });
@@ -118,12 +116,18 @@ export default function ProductForm({ p, onDone }) {
         <button type="button" className="lnk pf-back" onClick={cancel}>← Back to products</button>
         <h1 className="h2">{isNew ? "New product" : "Edit product"}</h1>
         <p className="mute">{isNew ? "Fill in the sections below, then save. You can change everything later." : f.n}</p>
+        {!isNew && (
+          <p className="mute sm">
+            {p.createdAt ? `Added ${dtm(p.createdAt)}` : "Added: date not recorded"}
+            {p.updatedAt && p.updatedAt !== p.createdAt ? `. Last updated ${dtm(p.updatedAt)}${p.updatedBy ? ` by ${p.updatedBy}` : ""}` : ""}
+          </p>
+        )}
       </div>
+      {err && <div className="pf-err" id="pf-err" role="alert">{err}</div>}
 
-      <section className={`pf-sec${err?.id === "pf-basics" ? " bad" : ""}`} id="pf-basics">
+      <section className="pf-sec" id="pf-basics">
         <div className="pf-h"><h2>Basics</h2><p>What shoppers see first.</p></div>
         <div className="pf-b">
-          <Err id="pf-basics" />
           <div className="two">
             <Field label="Name"><Input required value={f.n} onChange={set("n")} placeholder="e.g. Axis Day-Date" /></Field>
             <Field label="Dial or colour"><Input required value={f.s} onChange={set("s")} placeholder="e.g. Teal dial" /></Field>
@@ -144,11 +148,9 @@ export default function ProductForm({ p, onDone }) {
         </div>
       </section>
 
-      <section className={`pf-sec${err?.id === "pf-price" ? " bad" : ""}`} id="pf-price">
+      <section className="pf-sec" id="pf-price">
         <div className="pf-h"><h2>Price and stock</h2><p>Stock goes down automatically when an order is placed.</p></div>
-        <div className="pf-b">
-          <Err id="pf-price" />
-          <div className="two">
+        <div className="pf-b two">
           <Row label="Price" hint={Number(f.p) > 0 ? fmt(f.p) : "In Rwandan francs"}>
             <div className="inpre"><span>RWF</span><Input type="number" min="1" step="1" required inputMode="numeric" value={f.p} onChange={set("p")} aria-label="Price in RWF" /></div>
           </Row>
@@ -159,18 +161,16 @@ export default function ProductForm({ p, onDone }) {
               <button type="button" onClick={() => stepStock(1)} aria-label="More stock">+</button>
             </div>
           </Row>
-          </div>
         </div>
       </section>
 
-      <section className={`pf-sec${err?.id === "pf-photos" ? " bad" : ""}`} id="pf-photos">
+      <section className="pf-sec" id="pf-photos">
         <div className="pf-h">
           <h2>Photos</h2>
           <p>Upload as many as you like, up to {MAX_PHOTOS}. The first photo is the cover shown in the shop. Drag photos to reorder them.</p>
           <span className="pf-count">{f.im.length} / {MAX_PHOTOS}</span>
         </div>
         <div className="pf-b">
-          <Err id="pf-photos" />
           <label className={`dz${over ? " over" : ""}${room <= 0 ? " full" : ""}`}
             onDragEnter={() => setOver(true)} onDragLeave={() => setOver(false)} onDrop={() => setOver(false)}>
             <input type="file" accept="image/*" multiple disabled={room <= 0} aria-label="Upload photos"
@@ -181,7 +181,7 @@ export default function ProductForm({ p, onDone }) {
           </label>
 
           {(f.im.length > 0 || busy > 0) && (
-            <ul className="pgrid">
+            <ul className="pg">
               {f.im.map((m, i) => (
                 <li key={i + ":" + m.length} className={`pth${drag === i ? " drag" : ""}`} draggable
                   onDragStart={() => setDrag(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(i)} onDragEnd={() => setDrag(-1)}>

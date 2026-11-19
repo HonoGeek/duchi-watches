@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { useStore } from "../store";
 import { Img, Button, Badge, Field, Input, Pager, Panel, Select, Chip, Stars, Table, Textarea, usePaged } from "../ui";
 import { IM, PAY_STATUS, PERM, ST } from "../data";
 import { ussd, waLink } from "../pay";
-import { fmt, dt, tm, readImage, byNewest } from "../lib";
+import { fmt, dt, dtm, tm, ls, sv, readImage, byNewest } from "../lib";
 import ProductForm from "../ProductForm";
 import DateRange, { ymd } from "../DateRange";
-import AdminShell, { PageHead } from "../AdminShell";
+import AdminShell, { AIcon, PageHead } from "../AdminShell";
+import { Donut, HBars, Seg, TimeChart, short } from "../charts";
+import "../admin-extras.css";
 import { MAX_VIDEO, deleteVideo, mmss, probeVideo, putVideo } from "../videoDb";
 
 // How many rows each admin list shows per page.
@@ -80,8 +82,8 @@ function Allow({ sec, children }) {
   return PERM[adm.role].includes(sec) ? children : <None text="Your role does not have access to this page." />;
 }
 
-function OrdersTable({ list }) {
-  if (!list.length) return <None text="No orders yet." />;
+function OrdersTable({ list, empty = "No orders yet." }) {
+  if (!list.length) return <None text={empty} />;
   return (
     <Table head={["Order", "Customer", "Contact", "Date", "Total", "Payment", "Status"]}>
       {list.map((o) => (
@@ -98,39 +100,193 @@ function OrdersTable({ list }) {
   );
 }
 
-const short = (v) => (v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1000 ? Math.round(v / 1000) + "k" : v ? String(v) : "");
+const PRESETS = [[7, "7 days"], [30, "30 days"], [90, "90 days"]];
+const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, k) => { const d = parseDay(s); d.setDate(d.getDate() + k); return ymd(d); };
+const spanDays = (a, b) => Math.round((parseDay(b) - parseDay(a)) / 864e5);
+const pretty = (s, o) => parseDay(s).toLocaleDateString("en-GB", o);
+const DM = { day: "numeric", month: "short" };
+
+// Splits the chosen period into bars: one per day (up to 31 days), one per week (up to 180 days), otherwise one per month.
+function bucketsFor(from, to, today) {
+  const n = spanDays(from, to) + 1, out = [];
+  if (n <= 31) {
+    for (let i = 0; i < n; i++) {
+      const d = addDays(from, i);
+      out.push({ from: d, to: d, l: n <= 7 ? (d === today ? "Today" : pretty(d, { weekday: "short" })) : String(parseDay(d).getDate()), tip: pretty(d, { weekday: "short", ...DM }) });
+    }
+  } else if (n <= 180) {
+    for (let i = 0; i < n; i += 7) {
+      const a = addDays(from, i), b = addDays(from, Math.min(i + 6, n - 1));
+      out.push({ from: a, to: b, l: pretty(a, DM), tip: `${pretty(a, DM)} to ${pretty(b, DM)}` });
+    }
+  } else {
+    let cur = from;
+    while (cur <= to) {
+      const [y, m] = cur.split("-").map(Number);
+      const last = ymd(new Date(y, m, 0)), end = last < to ? last : to;
+      out.push({ from: cur, to: end, l: pretty(cur, { month: "short", year: "2-digit" }), tip: pretty(cur, { month: "long", year: "numeric" }) });
+      cur = addDays(end, 1);
+    }
+  }
+  return out;
+}
+
+// Up or down compared with the period before, as a small pill.
+function Trend({ cur, prev, n }) {
+  const vs = n === 1 ? "the day before" : `the previous ${n} days`;
+  let pill = null;
+  if (prev > 0) {
+    const p = Math.round(((cur - prev) / prev) * 100);
+    pill = <span className={`pill ${p > 0 ? "good" : p < 0 ? "bad" : "off"}`}>{p > 0 ? `▲ ${p}%` : p < 0 ? `▼ ${Math.abs(p)}%` : "No change"}</span>;
+  } else if (cur > 0) pill = <span className="pill good">New</span>;
+  return <>{pill}<span>vs {vs}</span></>;
+}
+
+const DIMS = [["category", "Category"], ["pay", "Payment method"], ["area", "Delivery area"], ["status", "Order status"]];
 
 export function Dashboard() {
-  const { allOrders, products } = useStore();
-  const ok = allOrders.filter((o) => o.status !== "Cancelled");
-  const rev = ok.reduce((a, o) => a + o.total, 0);
-  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => {
-    const d = new Date(Date.now() - (6 - i) * 864e5);
-    return { l: i === 6 ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" }), today: i === 6, v: ok.filter((o) => new Date(o.date).toDateString() === d.toDateString()).reduce((a, o) => a + o.total, 0) };
-  });
-  const mx = Math.max(1, ...days.map((x) => x.v));
-  const week = days.reduce((a, x) => a + x.v, 0);
+  const { allOrders, products, adm, messages, reviews } = useStore();
+  const [saved] = useState(() => ls("duchi-dash", {}));
+  const [preset, setPreset] = useState(PRESETS.some(([k]) => k === saved.preset) ? saved.preset : 30); // 7, 30, 90 or "custom"
+  const [custom, setCustom] = useState({ from: "", to: "" });
+  const [type, setType] = useState(["bar", "line", "area"].includes(saved.type) ? saved.type : "bar");
+  const [view, setView] = useState(["donut", "bars"].includes(saved.view) ? saved.view : "donut");
+  const [metric, setMetric] = useState("revenue");
+  const [dim, setDim] = useState("category");
+  const remember = (patch) => sv("duchi-dash", { ...ls("duchi-dash", {}), ...patch }); // the admin's choices are kept in this browser
+
+  // ----- the period (and the one before it, for the up/down pills)
+  const today = ymd(new Date());
+  const isCustom = preset === "custom" && !!custom.from;
+  const to = isCustom ? (custom.to || custom.from) : today;
+  const from = isCustom ? custom.from : addDays(today, -((preset === "custom" ? 30 : preset) - 1));
+  const n = spanDays(from, to) + 1;
+  const pTo = addDays(from, -1), pFrom = addDays(from, -n);
+  const dayOf = (o) => ymd(new Date(o.date));
+  const ok = allOrders.filter((o) => o.status !== "Cancelled"); // cancelled orders never count as sales
+  const inP = ok.filter((o) => dayOf(o) >= from && dayOf(o) <= to);
+  const inPrev = ok.filter((o) => dayOf(o) >= pFrom && dayOf(o) <= pTo);
+  const sum = (l) => l.reduce((a, o) => a + o.total, 0);
+  const rev = sum(inP), cnt = inP.length, aov = cnt ? Math.round(rev / cnt) : 0;
+  const revP = sum(inPrev), cntP = inPrev.length, aovP = cntP ? Math.round(revP / cntP) : 0;
+  const unpaid = ok.filter((o) => (o.payStatus || "Pending") !== "Paid");
+  const unpaidSum = sum(unpaid);
+  const orderDays = {};
+  allOrders.forEach((o) => { orderDays[dayOf(o)] = (orderDays[dayOf(o)] || 0) + 1; });
+
+  // ----- things that need attention (only the pages this role can open)
   const low = products.filter((p) => p.stock <= 5).sort((a, b) => a.stock - b.stock);
-  const todo = allOrders.filter((o) => o.status === "Processing").length;
+  const can = PERM[adm.role] || [];
+  const tiles = [
+    [allOrders.filter((o) => o.status === "Processing").length, "Orders to process", "/admin/orders?status=Processing", "bag", "orders"],
+    [unpaid.length, "Payments to confirm", "/admin/orders?pay=unpaid", "card", "orders"],
+    [(messages || []).filter((m) => !m.read).length, "Unread messages", "/admin/messages", "mail", "messages"],
+    [(reviews || []).filter((r) => r.status === "pending").length, "Reviews to approve", "/admin/reviews", "star", "reviews"],
+    [low.length, "Low on stock", "/admin/products", "box", "products"],
+  ].filter((t) => can.includes(t[4]));
   const kpis = [
-    ["Revenue", fmt(rev), "Without cancelled orders"],
-    ["Orders", allOrders.length, `${ok.length} not cancelled`],
-    ["To process", todo, todo ? "Waiting for you" : "All caught up"],
-    ["Low stock", low.length, "5 or fewer left"],
+    ["Revenue", fmt(rev), <Trend key="t" cur={rev} prev={revP} n={n} />],
+    ["Orders", cnt, <Trend key="t" cur={cnt} prev={cntP} n={n} />],
+    ["Average order", fmt(aov), <Trend key="t" cur={aov} prev={aovP} n={n} />],
+    ["Awaiting payment", fmt(unpaidSum), `${unpaid.length} ${unpaid.length === 1 ? "order" : "orders"} not marked as paid`],
   ];
+
+  // ----- sales chart
+  const series = bucketsFor(from, to, today).map((b) => {
+    const l = inP.filter((o) => dayOf(o) >= b.from && dayOf(o) <= b.to);
+    return { l: b.l, tip: b.tip, v: metric === "revenue" ? sum(l) : l.length };
+  });
+  const unit = n <= 31 ? "day" : n <= 180 ? "week" : "month";
+
+  // ----- best sellers
+  const sold = new Map();
+  inP.forEach((o) => o.items.forEach((it) => { const r = sold.get(it.id) || { id: it.id, q: 0, v: 0 }; r.q += it.q; r.v += it.p * it.q; sold.set(it.id, r); }));
+  const best = [...sold.values()].sort((a, b) => b.q - a.q || b.v - a.v);
+  const units = best.reduce((a, r) => a + r.q, 0);
+
+  // ----- breakdown (donut or bars)
+  const money = dim !== "status";
+  const groups = new Map();
+  const add = (k, v) => groups.set(k, (groups.get(k) || 0) + v);
+  if (dim === "category") inP.forEach((o) => o.items.forEach((it) => add(products[it.id]?.c || "Other", it.p * it.q)));
+  else if (dim === "pay") inP.forEach((o) => add(o.pay || "Other", o.total));
+  else if (dim === "area") inP.forEach((o) => add(o.area || "Other", o.total));
+  else allOrders.filter((o) => dayOf(o) >= from && dayOf(o) <= to).forEach((o) => add(o.status, 1)); // every status, cancelled too
+  let rows = [...groups].map(([label, v]) => ({ label, v })).sort((a, b) => b.v - a.v);
+  if (rows.length > 6) rows = [...rows.slice(0, 5), { label: "Other", v: rows.slice(5).reduce((a, r) => a + r.v, 0) }];
+  rows = rows.map((r) => ({ ...r, text: money ? fmt(r.v) : String(r.v) }));
+  const gTotal = rows.reduce((a, r) => a + r.v, 0);
+
+  const pickPreset = (k) => { setPreset(k); remember({ preset: k }); };
+  const pickRange = (r) => { setCustom(r); setPreset(r.from ? "custom" : saved.preset || 30); };
+  const period = from === to ? pretty(from, { ...DM, year: "numeric" }) : `${pretty(from, DM)} to ${pretty(to, { ...DM, year: "numeric" })}`;
+
   return (
     <>
-      <Title sub="A quick look at sales, orders and stock.">Dashboard</Title>
-      <div className="kpis">{kpis.map(([l, v, n]) => <Panel key={l} className="kpi"><div className="kl">{l}</div><div className="kv">{v}</div><div className="kn">{n}</div></Panel>)}</div>
+      <Title sub="Sales, orders and stock at a glance.">Dashboard</Title>
+
+      <div className="db-top">
+        <div className="row chips">{PRESETS.map(([k, l]) => <Chip key={k} on={preset === k} onClick={() => pickPreset(k)}>{l}</Chip>)}</div>
+        <DateRange value={custom} onChange={pickRange} counts={orderDays} />
+        <span className="db-per">{period}</span>
+      </div>
+
+      {tiles.length > 0 && (
+        <div className="db-attn" aria-label="Needs your attention">
+          {tiles.map(([c, label, link, ic]) => (
+            <Link key={label} to={link} className={`db-at ${c ? "hot" : "zero"}`}>
+              <span className="ic">{AIcon[ic]}</span><span><b>{c}</b><span className="l">{label}</span></span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="kpis">{kpis.map(([l, v, note]) => <Panel key={l} className="kpi"><div className="kl">{l}</div><div className="kv">{v}</div><div className="kn">{note}</div></Panel>)}</div>
+
       <div className="dgrid">
         <Panel>
-          <div className="head" style={{ alignItems: "baseline" }}><b style={{ fontWeight: 500 }}>Revenue, last 7 days</b><span className="mute sm">{fmt(week)}</span></div>
-          <div className="bars">{days.map((x) => (
-            <div key={x.l} className={x.today ? "today" : ""}>
-              <em>{short(x.v)}</em><i style={{ height: `calc((100% - 48px) * ${(x.v / mx).toFixed(3)})` }} title={fmt(x.v)} /><span>{x.l}</span>
+          <div className="db-ph">
+            <div><b>{metric === "revenue" ? "Revenue" : "Orders"} by {unit}</b><span className="sub">{metric === "revenue" ? `${fmt(rev)} in this period` : `${cnt} ${cnt === 1 ? "order" : "orders"} in this period`}</span></div>
+            <div className="db-ctl">
+              <Seg label="Show" value={metric} onChange={setMetric} options={[["revenue", "Revenue"], ["orders", "Orders"]]} />
+              <Seg label="Chart type" value={type} onChange={(v) => { setType(v); remember({ type: v }); }} options={[["bar", "Bar"], ["line", "Line"], ["area", "Area"]]} />
             </div>
-          ))}</div>
-          {!allOrders.length && <p className="mute sm" style={{ marginTop: 12 }}>Revenue will show here once customers place orders.</p>}
+          </div>
+          <TimeChart data={series} type={type} money={metric === "revenue"} label={`${metric === "revenue" ? "Revenue" : "Orders"} by ${unit}, ${period}`} />
+          {!inP.length && <p className="mute sm db-empty">No sales in this period yet. Orders that are not cancelled will show here.</p>}
+        </Panel>
+        <Panel>
+          <div className="db-ph"><div><b>Best sellers</b><span className="sub">{units} {units === 1 ? "item" : "items"} sold in this period</span></div></div>
+          {best.length ? (
+            <ul className="db-list">{best.slice(0, 5).map((r, i) => {
+              const p = products[r.id];
+              return p && (
+                <li key={r.id}>
+                  <span className="rk">{i + 1}</span>
+                  <div className="lthumb"><Img id={p.im[0]} w={100} /></div>
+                  <div className="lname"><span>{p.n}</span><span className="mute sm">{p.c}</span></div>
+                  <div className="vl"><b>{r.q} sold</b><span className="mute">{fmt(r.v)}</span></div>
+                </li>
+              );
+            })}</ul>
+          ) : <p className="mute sm db-empty">Your best sellers will show here once customers place orders.</p>}
+        </Panel>
+      </div>
+
+      <div className="db-two">
+        <Panel>
+          <div className="db-ph">
+            <div><b>Breakdown</b><span className="sub">{money ? "Sales" : "Orders"} by {DIMS.find(([k]) => k === dim)[1].toLowerCase()}</span></div>
+            <div className="db-ctl">
+              <Select className="db-sel" value={dim} onChange={(e) => setDim(e.target.value)} aria-label="Break down by">{DIMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+              <Seg label="Chart type" value={view} onChange={(v) => { setView(v); remember({ view: v }); }} options={[["donut", "Donut"], ["bars", "Bars"]]} />
+            </div>
+          </div>
+          {rows.length ? (view === "donut"
+            ? <Donut items={rows} center={money ? short(gTotal) : String(gTotal)} sub={money ? "RWF" : gTotal === 1 ? "order" : "orders"} />
+            : <HBars items={rows} />)
+            : <p className="mute sm db-empty">Nothing to show for this period yet.</p>}
         </Panel>
         <Panel className="lowst">
           <div className="head" style={{ alignItems: "baseline" }}><b style={{ fontWeight: 500 }}>Needs restocking</b><Link className="mute sm" to="/admin/products">Manage stock</Link></div>
@@ -145,6 +301,7 @@ export function Dashboard() {
           ) : <p className="mute sm" style={{ marginTop: 12 }}>Every product has more than 5 in stock.</p>}
         </Panel>
       </div>
+
       <div className="head" style={{ margin: "32px 0 12px", alignItems: "center" }}>
         <h2 className="h3">Recent orders</h2>
         {allOrders.length > 5 && <Link className="mute sm" to="/admin/orders">View all orders</Link>}
@@ -154,18 +311,73 @@ export function Dashboard() {
   );
 }
 
+// Orders that need action come first: Processing, then Dispatched, then the finished ones. Newest first inside each group.
+const RANK = { Processing: 0, Dispatched: 1, Delivered: 2, Cancelled: 3 };
+const byDate = (a, b) => new Date(b.date) - new Date(a.date);
+const ORDER_SORTS = [
+  ["action", "Needs action first", (a, b) => (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9) || byDate(a, b)],
+  ["newest", "Newest first", byDate],
+  ["oldest", "Oldest first", (a, b) => byDate(b, a)],
+  ["total", "Highest total", (a, b) => b.total - a.total || byDate(a, b)],
+];
+const isPaid = (o) => (o.payStatus || "Pending") === "Paid";
+
+// The key makes the page start fresh when it is opened from a dashboard tile (/admin/orders?status=Processing or ?pay=unpaid).
 export function AdminOrders() {
+  const { search } = useLocation();
+  return <OrdersPage key={search} />;
+}
+
+function OrdersPage() {
   const { allOrders } = useStore();
-  const [f, setF] = useState("All");
-  const list = f === "All" ? allOrders : allOrders.filter((o) => o.status === f);
-  const pg = usePaged(list, PAGE_SIZE.orders, f);
+  const [sp] = useSearchParams();
+  const [f, setF] = useState(ST.includes(sp.get("status")) ? sp.get("status") : "All");
+  const [pay, setPay] = useState(["paid", "unpaid"].includes(sp.get("pay")) ? sp.get("pay") : "all");
+  const [q, setQ] = useState("");
+  const [range, setRange] = useState({ from: "", to: "" });
+  const [sort, setSort] = useState("action");
+  const lo = range.from, hi = range.to || range.from; // only a start day means that one day
+  const needle = q.trim().toLowerCase(), tight = needle.replace(/\s+/g, "");
+  const days = {};
+  allOrders.forEach((o) => { const d = ymd(new Date(o.date)); days[d] = (days[d] || 0) + 1; });
+
+  // Everything except the status chip, so the numbers on the chips always match the other filters.
+  const base = allOrders.filter((o) => {
+    const d = ymd(new Date(o.date));
+    const hay = `${o.id} ${o.name} ${o.phone} ${o.cEmail || ""} ${o.email} ${o.pay}`.toLowerCase();
+    return (!lo || (d >= lo && d <= hi))
+      && (pay === "all" || (pay === "paid" ? isPaid(o) : o.status !== "Cancelled" && !isPaid(o)))
+      && (!needle || hay.includes(needle) || hay.replace(/\s+/g, "").includes(tight));
+  });
+  const count = (s) => (s === "All" ? base.length : base.filter((o) => o.status === s).length);
+  const cmp = ORDER_SORTS.find(([k]) => k === sort)[2];
+  const list = (f === "All" ? base : base.filter((o) => o.status === f)).sort(cmp);
+  const pg = usePaged(list, PAGE_SIZE.orders, `${f}|${pay}|${q}|${lo}|${hi}|${sort}`);
+  const waiting = allOrders.filter((o) => o.status === "Processing").length;
+  const filtered = !!(f !== "All" || pay !== "all" || needle || lo);
+  const clear = () => { setF("All"); setPay("all"); setQ(""); setRange({ from: "", to: "" }); };
+
   return (
     <Allow sec="orders">
-      <Title sub={`${allOrders.length} ${allOrders.length === 1 ? "order" : "orders"} in total. Change a status and the customer sees it straight away.`}>Orders</Title>
-      <div className="row chips" style={{ marginBottom: 20 }}>
-        {["All", ...ST].map((c) => <Chip key={c} on={c === f} onClick={() => setF(c)}>{c}</Chip>)}
+      <Title sub={`${allOrders.length} ${allOrders.length === 1 ? "order" : "orders"} in total${waiting ? `, ${waiting} waiting to be processed` : ""}. Change a status and the customer sees it straight away.`}>Orders</Title>
+      <div className="ptool">
+        <label className="psearch">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Order, name or phone" aria-label="Search orders" />
+        </label>
+        <DateRange value={range} onChange={setRange} counts={days} />
+        <Select className="pdate-sel" value={pay} onChange={(e) => setPay(e.target.value)} aria-label="Payment">
+          <option value="all">All payments</option><option value="paid">Paid</option><option value="unpaid">Awaiting payment</option>
+        </Select>
+        <Select className="pdate-sel" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort orders">
+          {ORDER_SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </Select>
+        {filtered && <button type="button" className="lnk" onClick={clear}>Clear filters</button>}
       </div>
-      <OrdersTable list={pg.items} />
+      <div className="row ofilters" role="group" aria-label="Filter by status">
+        {["All", ...ST].map((c) => <Chip key={c} on={c === f} aria-pressed={c === f} onClick={() => setF(c)}>{c}<span className="ocnt">{count(c)}</span></Chip>)}
+      </div>
+      <OrdersTable list={pg.items} empty={allOrders.length ? "No orders match your filters." : "No orders yet."} />
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
     </Allow>
   );
@@ -218,21 +430,32 @@ export function AdminProducts() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
   const [show, setShow] = useState("All");
+  const [by, setBy] = useState("added");   // which date the date picker filters: when it was added or when it was last updated
+  const [range, setRange] = useState({ from: "", to: "" });
+  const [sort, setSort] = useState("newest");
   const can = adm.role !== "Staff";
-  const matches = products.filter((x) =>
-    (cat === "All" || x.c === cat) && (x.n + " " + x.s).toLowerCase().includes(q.trim().toLowerCase())
-    && (show === "All" || (show === "Visible" && x.active !== false) || (show === "Hidden" && x.active === false) || (show === "Low stock" && x.stock <= 5)))
-    .sort(byNewest); // most recently added first
-  const pg = usePaged(matches, PAGE_SIZE.products, `${q}|${cat}|${show}`);
+  const stampOf = (x) => (by === "added" ? x.createdAt : x.updatedAt);
+  const lo = range.from, hi = range.to || range.from; // only a start day means that one day
+  const counts = {};
+  products.forEach((x) => { const t = stampOf(x); if (t) { const d = ymd(new Date(t)); counts[d] = (counts[d] || 0) + 1; } });
+  const matches = products.filter((x) => {
+    const t = stampOf(x), d = t ? ymd(new Date(t)) : "";
+    return (cat === "All" || x.c === cat) && (x.n + " " + x.s).toLowerCase().includes(q.trim().toLowerCase())
+      && (show === "All" || (show === "Visible" && x.active !== false) || (show === "Hidden" && x.active === false) || (show === "Low stock" && x.stock <= 5))
+      && (!lo || (d && d >= lo && d <= hi)); // products without a recorded date do not match a date filter
+  }).sort(sort === "updated" ? (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0) || byNewest(a, b) : sort === "oldest" ? (a, b) => byNewest(b, a) : byNewest);
+  const pg = usePaged(matches, PAGE_SIZE.products, `${q}|${cat}|${show}|${by}|${lo}|${hi}|${sort}`);
   if (can && ed != null) {
     return <Allow sec="products"><ProductForm key={ed} p={ed >= 0 ? products[ed] : null} onDone={() => setEd(null)} /></Allow>;
   }
   const live = products.filter((x) => x.active !== false).length;
   const lowN = products.filter((x) => x.stock <= 5).length;
   const list = pg.items;
+  const filtered = !!(q.trim() || cat !== "All" || show !== "All" || lo);
+  const order = sort === "updated" ? "Recently updated first." : sort === "oldest" ? "Oldest first." : "Newest first.";
   return (
     <Allow sec="products">
-      <Title sub={`${products.length} products, ${live} visible${lowN ? `, ${lowN} low on stock` : ""}. Newest first.`} actions={can && <Button size="s" onClick={() => setEd(-1)}>Add product</Button>}>Products and stock</Title>
+      <Title sub={`${products.length} products, ${live} visible${lowN ? `, ${lowN} low on stock` : ""}. ${order}`} actions={can && <Button size="s" onClick={() => setEd(-1)}>Add product</Button>}>Products and stock</Title>
       <div className="ptool">
         <label className="psearch">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
@@ -242,10 +465,18 @@ export function AdminProducts() {
           <option value="All">All categories</option>
           {cats.map((c) => <option key={c.name}>{c.name}</option>)}
         </Select>
+        <Select className="pdate-sel" value={by} onChange={(e) => setBy(e.target.value)} aria-label="Filter by which date">
+          <option value="added">Added on</option><option value="updated">Updated on</option>
+        </Select>
+        <DateRange value={range} onChange={setRange} counts={counts} />
+        <Select className="pdate-sel" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort products">
+          <option value="newest">Newest added</option><option value="updated">Recently updated</option><option value="oldest">Oldest added</option>
+        </Select>
         <div className="row chips">{["All", "Visible", "Hidden", "Low stock"].map((c) => <Chip key={c} on={c === show} onClick={() => setShow(c)}>{c}</Chip>)}</div>
+        {filtered && <button type="button" className="lnk" onClick={() => { setQ(""); setCat("All"); setShow("All"); setRange({ from: "", to: "" }); }}>Clear filters</button>}
       </div>
       {list.length ? (
-        <Table head={["Product", "Category", "Price", "Stock", "Status", ...(can ? [""] : [])]}>
+        <Table head={["Product", "Category", "Price", "Stock", "Status", "Added and updated", ...(can ? [""] : [])]}>
           {list.map((x) => (
             <tr key={x.id}>
               <td><div className="row" style={{ flexWrap: "nowrap" }}>
@@ -256,6 +487,12 @@ export function AdminProducts() {
               <td><Input type="number" min="0" key={x.stock} defaultValue={x.stock} className={`stockin${x.stock === 0 ? " out" : x.stock <= 5 ? " low" : ""}`} style={{ width: 84, height: 36 }} aria-label={`Stock of ${x.n}`}
                 onBlur={(e) => { if (+e.target.value !== x.stock) setStock(x.id, +e.target.value); }} /></td>
               <td><span className={`pill ${x.active === false ? "off" : "good"}`}>{x.active === false ? "Hidden" : "Visible"}</span></td>
+              <td><div className="pdates">
+                <span><i>Added</i>{x.createdAt ? dtm(x.createdAt) : <span className="na">Date not recorded</span>}</span>
+                <span><i>Updated</i>{x.updatedAt && x.updatedAt !== x.createdAt
+                  ? <>{dtm(x.updatedAt)}{x.updatedBy && <span className="by"> · {x.updatedBy}</span>}</>
+                  : <span className="na">{x.createdAt ? "Not updated yet" : "Date not recorded"}</span>}</span>
+              </div></td>
               {can && <td><div className="row" style={{ flexWrap: "nowrap" }}>
                 <Button variant="o" size="s" onClick={() => setEd(x.id)}>Edit</Button>
                 <Button variant="o" size="s" onClick={() => toggleProduct(x.id)}>{x.active === false ? "Show" : "Hide"}</Button>
@@ -263,7 +500,7 @@ export function AdminProducts() {
             </tr>
           ))}
         </Table>
-      ) : <None text="No products match your search." />}
+      ) : <None text={products.length ? "No products match your filters." : "No products yet."} />}
       <Pager {...pg} onPage={pg.setPage} noun="products" />
     </Allow>
   );
@@ -506,7 +743,7 @@ export function Messages() {
               </div></td>
               <td className="nw">{tm(m.date)}</td>
               <td><span className={`pill ${m.read ? "off" : "warn"}`}>{m.read ? "Read" : "New"}</span></td>
-              <td><div className="row" style={{ flexWrap: "nowrap" }}>
+              <td><div className="row mact">
                 <Button variant="o" size="s" href={`mailto:${m.email}?subject=${encodeURIComponent("Your message to DUCHI")}`} onClick={() => { if (!m.read) setMessageRead(m.id, true, true); }}>Reply</Button>
                 <Button variant="o" size="s" onClick={() => setMessageRead(m.id, !m.read)}>{m.read ? "Mark unread" : "Mark read"}</Button>
                 <Button variant="o" size="s" onClick={() => { if (window.confirm(`Delete the message from ${m.name}?`)) deleteMessage(m.id); }}>Delete</Button>

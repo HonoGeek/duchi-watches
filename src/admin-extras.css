@@ -1,0 +1,155 @@
+/* ===== Admin dashboard (charts, attention tiles) and product dates ===== */
+
+/* --- toolbar under the title --- */
+.db-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
+.db-per{font-size:13px;color:var(--mute);margin-left:4px}
+
+/* --- "needs your attention" tiles --- */
+.db-attn{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px}
+.db-at{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--ax-card,var(--bg));color:var(--ink);text-decoration:none;transition:border-color .2s,transform .25s}
+.db-at:hover{border-color:var(--gold)}
+.db-at .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--soft);color:var(--mute);flex:none}
+.db-at .ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.db-at b{display:block;font-size:22px;font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.db-at .l{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+.db-at.hot .ic{background:rgba(224,161,0,.16);color:#b26a00}
+[data-theme="dark"] .db-at.hot .ic{color:#f0b84a}
+.db-at.zero b{color:var(--mute)}
+
+/* --- cards: trend pill --- */
+.kpi .kn{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kpi .kn .pill{padding:2px 8px;font-size:11px}
+.kpi .kn .pill::before{display:none}
+
+/* --- panels --- */
+.db-ph{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;margin-bottom:14px}
+.db-ph>div:first-child b{font-weight:500;display:block}
+.db-ph .sub{font-size:13px;color:var(--mute)}
+.db-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.db-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.db-seg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--soft)}
+.db-seg button{height:30px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--mute);font-size:13px;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
+.db-seg button:hover{color:var(--ink)}
+.db-seg button.on{background:var(--bg);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.db-sel{height:38px!important;width:auto!important;min-width:150px;border-radius:980px!important;padding:0 36px 0 16px!important;font-size:13px}
+
+/* --- time chart --- */
+.db-chart{position:relative;width:100%}
+.db-chart svg{display:block;overflow:visible}
+.db-chart text{font-size:11px;fill:var(--mute);font-family:inherit}
+.db-chart .db-val{fill:var(--ink);font-weight:600}
+.db-grid{stroke:var(--line);stroke-width:1}
+.db-bar{fill:color-mix(in srgb,var(--gold) 55%,var(--soft));transition:fill .2s}
+.db-bar.last,.db-bar.hot{fill:var(--gold)}
+.db-line{fill:none;stroke:var(--gold);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.db-dot{fill:var(--ax-card,var(--bg));stroke:var(--gold);stroke-width:2}
+.db-dot.hot{fill:var(--gold)}
+.db-guide{stroke:var(--gold);stroke-width:1;stroke-dasharray:3 3}
+.db-hit{fill:transparent;cursor:crosshair}
+.db-tip{position:absolute;transform:translate(-50%,-100%);pointer-events:none;padding:8px 12px;border-radius:10px;background:var(--inv);color:var(--invt);font-size:12px;line-height:1.3;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:5}
+.db-tip span{display:block;opacity:.75}
+.db-tip b{display:block;font-size:14px;font-weight:600}
+
+/* --- breakdown: donut and bars --- */
+.db-c0{--c:var(--gold)}.db-c1{--c:#4a8fd4}.db-c2{--c:#2e9e5b}.db-c3{--c:#c9603f}.db-c4{--c:#8a6fc1}.db-c5{--c:#8a8a8f}
+.db-donut{display:grid;grid-template-columns:minmax(150px,190px) minmax(0,1fr);gap:20px;align-items:center}
+.db-donut svg{width:100%;max-width:220px;height:auto;display:block}
+.db-ring{fill:none;stroke:var(--soft);stroke-width:22}
+.db-seg-c{fill:none;stroke:var(--c);stroke-width:22;transform:rotate(-90deg);transform-origin:80px 80px;transition:stroke-dasharray .5s var(--e)}
+.db-cm{font-size:22px!important;font-weight:600;fill:var(--ink)!important}
+.db-cs{font-size:11px!important}
+.db-leg,.db-hb{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.db-leg li{display:flex;align-items:center;gap:10px;font-size:13px;min-width:0}
+.db-leg i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.db-leg .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-leg b{font-weight:500;white-space:nowrap}
+.db-leg em,.db-hb em{font-style:normal;color:var(--mute);font-size:12px;min-width:34px;text-align:right;display:inline-block}
+.db-hb .t{display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:6px}
+.db-hb .t b{font-weight:500}
+.db-hb .b{height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+.db-hb .b i{display:block;height:100%;border-radius:99px;background:var(--c);transition:width .5s var(--e)}
+
+/* --- best sellers --- */
+.db-list{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.db-list li{display:flex;align-items:center;gap:12px}
+.db-list .rk{width:18px;font-size:13px;color:var(--mute);text-align:center;flex:none}
+.db-list .lname{flex:1;min-width:0;display:grid;font-size:14px}
+.db-list .lname>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-list .vl{text-align:right;font-size:13px;white-space:nowrap}
+.db-list .vl b{display:block;font-weight:500}
+.db-empty{margin:8px 0 0;font-size:14px}
+
+/* --- product dates (Products page) --- */
+.pdates{display:grid;gap:3px;font-size:13px;white-space:nowrap}
+.pdates i{font-style:normal;color:var(--mute);display:inline-block;min-width:60px}
+.pdates .na{color:var(--mute)}
+.pdates .by{color:var(--mute)}
+.pdate-sel{width:auto!important;min-width:128px}
+
+@media(max-width:900px){
+  .db-two{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .db-donut{grid-template-columns:1fr;justify-items:center}
+  .db-donut .db-leg{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.db-seg-c,.db-hb .b i,.db-bar,.db-at{transition:none}}
+
+/* ===== Phones and tablets ===== */
+/* The admin content area is a grid whose single column used to stretch to the widest item (a nowrap number, a row of chips),
+   which made the whole page scroll sideways. minmax(0, 1fr) lets the column shrink to the screen instead. */
+.ax .ax-content{grid-template-columns:minmax(0,1fr)}
+.ax .ax-content>*{min-width:0}
+.db-top{min-width:0}
+.db-chart{max-width:100%}
+@media(max-width:1279px){.ax .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){
+  .ax .dgrid,.ax .db-two{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:600px){
+  /* period: the three quick choices share one row, the date picker and the dates sit under them */
+  .db-top{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px 12px}
+  .db-top .chips{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;width:100%;overflow:visible}
+  .db-top .chips .chip{width:100%;justify-content:center;padding-left:0;padding-right:0;text-align:center}
+  .db-top .dr{min-width:0;max-width:100%}
+  .dr-btn{max-width:100%;padding:0 16px}
+  .dr-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .db-per{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+
+  /* attention tiles: two across, the odd one out fills the last row */
+  .db-attn{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .db-at{padding:12px;gap:10px;min-width:0}
+  .db-at>span:last-child{min-width:0}
+  .db-at .ic{width:34px;height:34px;border-radius:10px}
+  .db-at .ic svg{width:17px;height:17px}
+  .db-at b{font-size:19px}
+  .db-at .l{font-size:12px;line-height:1.25}
+  .db-at:last-child:nth-child(odd){grid-column:1/-1}
+
+  /* cards: two across with a smaller number that may wrap instead of pushing the page wider */
+  .ax .kpis{gap:10px}
+  .ax .ax-content .kpi{padding:14px}
+  .ax .kpi .kl{font-size:12px}
+  .ax .kpi .kv{font-size:18px;white-space:normal;overflow-wrap:anywhere;margin:4px 0}
+  .ax .kpi .kn{font-size:11px;gap:6px}
+
+  /* chart and breakdown controls use the full width */
+  .db-ph{align-items:stretch}
+  .db-ctl{width:100%;gap:8px}
+  .db-ctl .db-seg{flex:1}
+  .db-seg button{flex:1;padding:0 8px}
+  .db-ctl .db-sel{flex:1 1 100%;width:100%!important}
+  .db-chart text{font-size:10px}
+  .db-list .vl{font-size:12px}
+}
+@media(max-width:600px){
+  /* product dates: wrap and sit on the right, like the other values in the phone card layout */
+  .ax .pdates{white-space:normal;justify-items:end;text-align:right}
+  .ax .pdates i{min-width:0;margin-right:8px}
+  /* message buttons: wrap instead of running off the screen */
+  .ax .mact{flex-wrap:wrap;justify-content:flex-end}
+}
+@media(min-width:601px){.ax .mact{flex-wrap:nowrap}}
+@media(max-width:360px){
+  .ax .kpis{grid-template-columns:minmax(0,1fr)}
+}

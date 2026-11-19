@@ -1,0 +1,29 @@
+/* ===== Customer dashboard: order rows, delivery progress, stats ===== */
+.orow-m{display:flex;align-items:center;gap:14px;min-width:0}
+.orow>div:first-child{min-width:0}
+.orow-th{position:relative;flex:none;width:52px;height:52px}
+.orow-th span{display:block;width:100%;height:100%;border-radius:12px;overflow:hidden;background:var(--soft)}
+.orow-th img{width:100%;height:100%;object-fit:cover;display:block}
+.orow-th em{position:absolute;right:-6px;bottom:-6px;min-width:22px;height:22px;padding:0 5px;border-radius:99px;background:var(--inv);color:var(--invt);font-style:normal;font-size:11px;font-weight:600;line-height:18px;text-align:center;border:2px solid var(--ax-card,var(--bg))}
+.orow-t{min-width:0}
+.orow-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+
+.ac-track{display:grid;gap:22px}
+.ac-tk{display:grid;gap:12px}
+.ac-tk-h{display:flex;justify-content:space-between;align-items:center;gap:6px 14px;flex-wrap:wrap}
+.ac-tk .steps{margin:0}
+.ac-empty{display:grid;gap:14px;justify-items:start}
+
+.ax .stats.s4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ax .stats .ac-money{font-size:clamp(17px,1.65vw,24px);line-height:1.2;padding:10px 0 6px;white-space:nowrap}
+.ax .stats.s4 .h2{font-size:clamp(30px,3vw,38px)}
+
+@media(max-width:900px){.ax .stats.s4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+  .orow-th{width:44px;height:44px}
+  .ax .stats.s4{gap:10px}
+  .ax .stats.s4 .panel{padding:16px}
+  .ax .stats.s4 .h2{font-size:28px}
+  .ax .stats.s4 .ac-money{font-size:17px;padding:6px 0 4px;white-space:normal}
+}
+@media(max-width:340px){.ax .stats.s4{grid-template-columns:minmax(0,1fr)}}

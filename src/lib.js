@@ -11,6 +11,8 @@ export const sv = (k, v) => {
 };
 export const fmt = (n) => "RWF " + Number(n).toLocaleString("en-US");
 export const dt = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+// "18 Nov 2026, 14:30"
+export const dtm = (d) => `${dt(d)}, ${new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 export const tm = (d) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 // A photo can be an Unsplash id (demo photos), a web link, a file in /public, or an uploaded image (data URL).

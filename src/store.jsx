@@ -290,22 +290,27 @@ export function StoreProvider({ children }) {
     return true;
   };
   const adminSignOut = () => { setAdm(null); showToast("Signed out of the admin area"); };
+  // Products carry createdAt, updatedAt (milliseconds) and updatedBy. Demo products from before this have none.
+  const stamp = () => ({ updatedAt: Date.now(), updatedBy: adm?.name || "" });
   const saveProduct = (prod) => {
     const isNew = prod.id >= products.length;
-    setProducts((ps) => (isNew ? [...ps, prod] : ps.map((p) => (p.id === prod.id ? prod : p))));
+    const now = Date.now();
+    setProducts((ps) => (isNew
+      ? [...ps, { ...prod, createdAt: now, updatedAt: now, updatedBy: adm?.name || "" }]
+      : ps.map((p) => (p.id === prod.id ? { ...p, ...prod, ...stamp() } : p))));
     log((isNew ? "Added" : "Edited") + " product " + prod.n);
     showToast(isNew ? `${prod.n} was added to the store` : `${prod.n} was updated`);
   };
   const toggleProduct = (id) => {
     const p = products[id];
-    setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, active: x.active === false } : x)));
+    setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, active: x.active === false, ...stamp() } : x)));
     log((p.active === false ? "Showed" : "Hid") + " product " + p.n);
     showToast(p.active === false ? `${p.n} is now visible in the store` : `${p.n} is now hidden from the store`);
   };
   const setStock = (id, n) => {
     const p = products[id];
     const stock = Math.max(0, n || 0);
-    setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, stock } : x)));
+    setProducts((ps) => ps.map((x) => (x.id === id ? { ...x, stock, ...stamp() } : x)));
     log(`Stock of ${p.n}: ${p.stock} to ${stock}`);
     showToast("Stock updated");
   };

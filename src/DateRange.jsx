@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Button, Icon } from "./ui";
 import { useOutside } from "./AdminShell";
+import "./date-range.css";
 
 /* One date field for the whole admin area. It shows a single button; pressing it opens a month calendar.
    Tap a day to start, tap another day to finish the range (tap the same day twice for one day).

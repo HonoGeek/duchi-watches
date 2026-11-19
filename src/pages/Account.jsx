@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { useStore } from "../store";
 import { Img, Button, Chip, Empty, Field, Input, Pager, Panel, Select, ProductCard, Stars, usePaged } from "../ui";
 import AccountShell from "../AccountShell";
 import { PageHead } from "../AdminShell";
 import ReviewDialog from "../ReviewDialog";
 import { AuthBox } from "./Login";
+import DateRange, { ymd } from "../DateRange";
 import { fmt, dt } from "../lib";
+import "../account-extras.css";
 
 // Rows per page in the customer area.
 const PAGE_SIZE = { orders: 6, wishlist: 6 };
@@ -28,74 +30,161 @@ export default function Account() {
 // Order status as a small colored pill (colors live in home-refine.css, keyed by data-s).
 const StatusPill = ({ s }) => <span className="badge spill" data-s={s}>{s}</span>;
 
+const ACTIVE = ["Placed", "Processing", "Dispatched"];
+
+// One order in a list: the watch(es), the date, the status and the total.
 const OrderRow = ({ o }) => {
-  const { eligible } = useStore();
+  const { eligible, products } = useStore();
   const n = o.items.reduce((a, x) => a + x.q, 0);
   const todo = eligible.filter((e) => e.orderId === o.id).length; // delivered items still waiting for a review
+  const ws = o.items.map((i) => products[i.id]).filter(Boolean);
   return (
     <Link className="panel orow" to={`/account/orders/${o.id}`}>
-      <div><b style={{ fontWeight: 500 }}>{o.id}</b><div className="mute sm">{dt(o.date)}, {n} item{n > 1 ? "s" : ""}</div>
-        {todo > 0 && <span className="rw-chip">Rate your {todo === 1 ? "watch" : `${todo} watches`}</span>}</div>
+      <div className="orow-m">
+        <div className="orow-th" aria-hidden="true">
+          {ws[0] && <span><Img id={ws[0].im[0]} w={120} /></span>}
+          {ws.length > 1 && <em>+{ws.length - 1}</em>}
+        </div>
+        <div className="orow-t">
+          <b style={{ fontWeight: 500 }}>{o.id}</b>
+          <div className="mute sm orow-n">{ws[0]?.n}{ws.length > 1 ? ` and ${ws.length - 1} more` : ""}</div>
+          <div className="mute sm">{dt(o.date)}, {n} item{n > 1 ? "s" : ""}</div>
+          {todo > 0 && <span className="rw-chip">Rate your {todo === 1 ? "watch" : `${todo} watches`}</span>}
+        </div>
+      </div>
       <StatusPill s={o.status} /><b>{fmt(o.total)}</b>
     </Link>
   );
 };
 
+// Delivery progress for an order that is on its way.
+const STEPS = ["Placed", "Processing", "Dispatched", "Delivered"];
+const Track = ({ o }) => {
+  const ix = Math.max(1, STEPS.indexOf(o.status));
+  return (
+    <div className="ac-tk">
+      <div className="ac-tk-h">
+        <div><b style={{ fontWeight: 500 }}>{o.id}</b><span className="mute sm"> · {dt(o.date)} · {fmt(o.total)}</span></div>
+        <Link className="lnk" to={`/account/orders/${o.id}`}>View details</Link>
+      </div>
+      <div className="steps" role="img" aria-label={`Order ${o.id}: ${o.status}`}>{STEPS.map((x, i) => <div key={x} className={i <= ix ? "d" : ""}>{x}</div>)}</div>
+    </div>
+  );
+};
+
 export function Overview() {
-  const { user, orders, wish, addrs, eligible, products } = useStore();
-  const stats = [["Orders", orders.length, "orders"], ["Wishlist", wish.length, "wishlist"], ["Saved addresses", addrs.length, "addresses"]];
+  const { user, orders, wish, eligible, products } = useStore();
+  const live = orders.filter((o) => ACTIVE.includes(o.status));
+  const spent = orders.filter((o) => o.status !== "Cancelled").reduce((a, o) => a + o.total, 0);
+  const stats = [["Orders", orders.length, "orders"], ["In progress", live.length, "orders?f=active"], ["Total spent", fmt(spent), "orders", true], ["Wishlist", wish.length, "wishlist"]];
   return (
     <>
       <PageHead title={`Hi, ${user.name.split(" ")[0]}`} sub={`${user.email}. Here is a summary of your account.`} />
-      <div className="stats">
-        {stats.map(([l, n, to]) => <Link key={to} className="panel" to={`/account/${to}`}><div className="h2">{n}</div><div className="mute sm">{l}</div></Link>)}
+      <div className="stats s4">
+        {stats.map(([l, n, to, money]) => <Link key={l} className="panel" to={`/account/${to}`}><div className={money ? "h2 ac-money" : "h2"}>{n}</div><div className="mute sm">{l}</div></Link>)}
       </div>
       {eligible.length > 0 && (
         <Panel className="rvcta">
           <div><b>{eligible.length === 1 ? `How do you like your ${products[eligible[0].pid].n}?` : `${eligible.length} delivered watches are waiting for your review`}</b>
             <p className="mute sm">A quick review helps other buyers. It is completely optional.</p></div>
-          <Button size="s" to="/account/orders">Rate {eligible.length === 1 ? "it" : "them"}</Button>
+          <Button size="s" to="/account/orders?f=review">Rate {eligible.length === 1 ? "it" : "them"}</Button>
         </Panel>
       )}
-      <h2 className="h3">Latest order</h2>
-      {orders[0] ? <OrderRow o={orders[0]} /> : <Empty text="You have not placed an order yet." />}
+      {live.length > 0 && (
+        <>
+          <h2 className="h3">On its way</h2>
+          <Panel className="ac-track">{live.slice(0, 3).map((o) => <Track key={o.id} o={o} />)}</Panel>
+        </>
+      )}
+      <div className="head" style={{ margin: 0, alignItems: "baseline" }}>
+        <h2 className="h3">Recent orders</h2>
+        {orders.length > 3 && <Link className="lnk" to="/account/orders">View all {orders.length} orders</Link>}
+      </div>
+      {orders.length
+        ? <div className="olist">{orders.slice(0, 3).map((o) => <OrderRow key={o.id} o={o} />)}</div>
+        : <Panel className="ac-empty"><p className="mute">You have not placed an order yet. Your orders and their delivery progress will show here.</p><Button to="/shop" size="s">Browse watches</Button></Panel>}
     </>
   );
 }
 
-// Status filters for the orders list: [key, label, test]
+// Status filters for the orders list: [key, label, test]. "To review" needs the store, so it is added inside the page.
 const ORDER_FILTERS = [
   ["all", "All", () => true],
-  ["active", "In progress", (o) => ["Placed", "Processing", "Dispatched"].includes(o.status)],
+  ["active", "In progress", (o) => ACTIVE.includes(o.status)],
   ["delivered", "Delivered", (o) => o.status === "Delivered"],
   ["cancelled", "Cancelled", (o) => o.status === "Cancelled"],
 ];
+const rank = (o) => (ACTIVE.includes(o.status) ? 0 : 1);
+const newest = (a, b) => new Date(b.date) - new Date(a.date);
+const ORDER_SORTS = [
+  ["new", "Newest first", newest],
+  ["old", "Oldest first", (a, b) => newest(b, a)],
+  ["high", "Highest total", (a, b) => b.total - a.total || newest(a, b)],
+  ["active", "In progress first", (a, b) => rank(a) - rank(b) || newest(a, b)],
+];
 
+// The key starts the page fresh when it is opened from a link such as /account/orders?f=review.
 export function Orders() {
-  const { orders } = useStore();
-  const [f, setF] = useState("all");
-  const test = ORDER_FILTERS.find((x) => x[0] === f)[2];
-  const list = orders.filter(test);
-  const pg = usePaged(list, PAGE_SIZE.orders, f); // back to page 1 when the filter changes
-  const shown = f === "all" ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}` : `${list.length} of ${orders.length} orders`;
+  const { search } = useLocation();
+  return <OrdersList key={search} />;
+}
+
+function OrdersList() {
+  const { orders, eligible, products } = useStore();
+  const [sp] = useSearchParams();
+  const reviewIds = new Set(eligible.map((e) => e.orderId));
+  const filters = [...ORDER_FILTERS, ["review", "To review", (o) => reviewIds.has(o.id)]];
+  const [f, setF] = useState(filters.some(([k]) => k === sp.get("f")) ? sp.get("f") : "all");
+  const [q, setQ] = useState("");
+  const [range, setRange] = useState({ from: "", to: "" });
+  const [sort, setSort] = useState("new");
+  const lo = range.from, hi = range.to || range.from; // only a start day means that one day
+  const needle = q.trim().toLowerCase();
+  const days = {};
+  orders.forEach((o) => { const d = ymd(new Date(o.date)); days[d] = (days[d] || 0) + 1; });
+
+  // Everything except the status chip, so the numbers on the chips always match the search and the dates.
+  const base = orders.filter((o) => {
+    const d = ymd(new Date(o.date));
+    return (!lo || (d >= lo && d <= hi)) && (!needle || `${o.id} ${o.items.map((i) => products[i.id]?.n || "").join(" ")}`.toLowerCase().includes(needle));
+  });
+  const test = filters.find((x) => x[0] === f)[2];
+  const list = base.filter(test).sort(ORDER_SORTS.find(([k]) => k === sort)[2]);
+  const pg = usePaged(list, PAGE_SIZE.orders, `${f}|${q}|${lo}|${hi}|${sort}`); // back to page 1 when anything changes
+  const filtered = !!(f !== "all" || needle || lo);
+  const clear = () => { setF("all"); setQ(""); setRange({ from: "", to: "" }); };
+  const shown = !filtered ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}` : `${list.length} of ${orders.length} orders`;
   return (
     <>
       <PageHead title="Orders" sub={orders.length ? `${shown}. Open one to see its delivery progress.` : "Everything you order will be listed here."} />
       {orders.length > 0 && (
-        <div className="row ofilters" role="group" aria-label="Filter orders by status">
-          {ORDER_FILTERS.map(([k, label, t]) => {
-            const n = orders.filter(t).length;
-            return (k === "all" || n > 0 || k === f) && (
-              <Chip key={k} on={f === k} aria-pressed={f === k} onClick={() => setF(k)}>{label}<span className="ocnt">{n}</span></Chip>
-            );
-          })}
-        </div>
+        <>
+          <div className="ptool">
+            <label className="psearch">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by order number or watch" aria-label="Search your orders" />
+            </label>
+            <DateRange value={range} onChange={setRange} counts={days} />
+            <Select className="pdate-sel" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort orders">
+              {ORDER_SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </Select>
+            {filtered && <button type="button" className="lnk" onClick={clear}>Clear filters</button>}
+          </div>
+          <div className="row ofilters" role="group" aria-label="Filter orders by status">
+            {filters.map(([k, label, t]) => {
+              const n = base.filter(t).length;
+              return (k === "all" || n > 0 || k === f) && (
+                <Chip key={k} on={f === k} aria-pressed={f === k} onClick={() => setF(k)}>{label}<span className="ocnt">{n}</span></Chip>
+              );
+            })}
+          </div>
+        </>
       )}
       {orders.length === 0
-        ? <Empty text="Your orders will appear here once you place one." />
+        ? <Empty text="Your orders will appear here once you place one." to="/shop" label="Browse watches" />
         : list.length
           ? <div className="olist">{pg.items.map((o) => <OrderRow key={o.id} o={o} />)}</div>
-          : <Panel><p className="mute" style={{ marginBottom: 16 }}>No orders with this status.</p><Button variant="o" size="s" onClick={() => setF("all")}>Show all orders</Button></Panel>}
+          : <Panel><p className="mute" style={{ marginBottom: 16 }}>No orders match your filters.</p><Button variant="o" size="s" onClick={clear}>Clear filters</Button></Panel>}
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
     </>
   );
