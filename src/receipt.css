@@ -1,0 +1,35 @@
+/* ===== Receipt: always light, so it prints well whatever the theme ===== */
+.rp-wrap{max-width:820px;margin:0 auto;padding:24px 16px 64px}
+.rp-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.rp{background:#fff;color:#111;color-scheme:light;border-radius:16px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,.18);font-size:14px;line-height:1.55}
+.rp h1{font-size:22px;font-weight:600;letter-spacing:.14em;margin:0 0 8px;color:#111}
+.rp h2{font-size:20px;font-weight:600;margin:0 0 6px;color:#111}
+.rp h3{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b6b70;margin:0 0 6px}
+.rp p{margin:0;color:#333;max-width:none}
+.rp .rp-head{background:none;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-bottom:24px;border-bottom:2px solid #111}
+.rp-meta{text-align:right}
+.rp-stamp{display:inline-block;margin-top:10px;padding:3px 12px;border:2px solid currentColor;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.1em}
+.rp-stamp.paid{color:#1f8a4c}.rp-stamp.pending{color:#b26a00}.rp-stamp.cancelled{color:#d93025}
+.rp-two{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:24px 0}
+.rp table{width:100%;border-collapse:collapse}
+.rp th{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b6b70;text-align:left;padding:10px 0;border-bottom:1px solid #d0d0d5}
+.rp td,.rp td:last-child{padding:12px 0;border-bottom:1px solid #ececf0;color:#111;vertical-align:top;background:none}
+.rp .num{text-align:right;white-space:nowrap;padding-left:12px}
+.rp-sum{margin:16px 0 0 auto;max-width:320px;display:grid;gap:6px}
+.rp-sum>div{display:flex;justify-content:space-between;gap:16px;color:#333}
+.rp-sum .tot{margin-top:6px;padding-top:10px;border-top:2px solid #111;font-size:16px;font-weight:600;color:#111}
+.rp-pay{margin-top:28px}
+.rp .rp-foot{background:none;margin-top:32px;padding-top:16px;border-top:1px solid #ececf0;text-align:center;color:#6b6b70;font-size:13px}
+@media(max-width:600px){
+  .rp{padding:22px 18px;border-radius:12px}
+  .rp .rp-head{background:none;flex-direction:column;gap:16px}.rp-meta{text-align:left}
+  .rp-two{grid-template-columns:1fr;gap:16px}
+  .rp th,.rp td{font-size:13px}
+}
+@media print{
+  html,body{background:#fff!important}
+  .no-print,.toast,.skip,.prog,.wa{display:none!important}
+  .rp-wrap{max-width:none;padding:0}
+  .rp{box-shadow:none;border-radius:0;padding:0}
+  @page{margin:16mm}
+}

@@ -7,4 +7,15 @@ export const phoneDigits = (p) => {
   if (d.startsWith("0")) d = "250" + d.slice(1);
   return d;
 };
-export const waLink = (p) => "https://wa.me/" + phoneDigits(p);
+export const waLink = (p, text) => "https://wa.me/" + phoneDigits(p) + (text ? "?text=" + encodeURIComponent(text) : "");
+export const smsLink = (p, text) => "sms:+" + phoneDigits(p) + (text ? "?body=" + encodeURIComponent(text) : "");
+// A short, friendly update for the customer, based on where the order is now. Opens ready to send in WhatsApp or SMS.
+export const orderMessage = (o) => {
+  const first = String(o.name || "").trim().split(/\s+/)[0] || "there";
+  const link = typeof location !== "undefined" ? `${location.origin}${location.pathname}#/account/orders/${o.id}` : "";
+  if (o.status === "Cancelled") return `Hello ${first}, your DUCHI order ${o.id} was cancelled. Please message us if you have any questions.`;
+  if (o.status === "Delivered") return `Hello ${first}, your DUCHI order ${o.id} has been delivered. Thank you! You can see your order and leave a review here: ${link}`;
+  if (o.status === "Dispatched") return `Hello ${first}, your DUCHI order ${o.id} has been dispatched and is on its way to ${o.district}.`;
+  if ((o.payStatus || "Pending") === "Paid") return `Hello ${first}, we received your payment for DUCHI order ${o.id} and we are getting your watch ready.`;
+  return `Hello ${first}, this is DUCHI STORE. We received your order ${o.id} and we are checking your payment.`;
+};

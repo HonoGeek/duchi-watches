@@ -5,9 +5,10 @@ import { Img, Button, Chip, Empty, Field, Input, Pager, Panel, Select, ProductCa
 import AccountShell from "../AccountShell";
 import { PageHead } from "../AdminShell";
 import ReviewDialog from "../ReviewDialog";
+import OrderActions from "../OrderActions";
 import { AuthBox } from "./Login";
 import DateRange, { ymd } from "../DateRange";
-import { fmt, dt } from "../lib";
+import { clean, fmt, dt, isName, isPhone } from "../lib";
 import "../account-extras.css";
 
 // Rows per page in the customer area.
@@ -34,15 +35,15 @@ const ACTIVE = ["Placed", "Processing", "Dispatched"];
 
 // One order in a list: the watch(es), the date, the status and the total.
 const OrderRow = ({ o }) => {
-  const { eligible, products } = useStore();
+  const { eligible, getProduct } = useStore();
   const n = o.items.reduce((a, x) => a + x.q, 0);
   const todo = eligible.filter((e) => e.orderId === o.id).length; // delivered items still waiting for a review
-  const ws = o.items.map((i) => products[i.id]).filter(Boolean);
+  const ws = o.items.map((i) => ({ id: i.id, n: i.n || getProduct(i.id)?.n, im: getProduct(i.id)?.im?.[0] })).filter((w) => w.n); // the name kept in the order still shows if the watch is gone
   return (
     <Link className="panel orow" to={`/account/orders/${o.id}`}>
       <div className="orow-m">
         <div className="orow-th" aria-hidden="true">
-          {ws[0] && <span><Img id={ws[0].im[0]} w={120} /></span>}
+          {ws[0]?.im && <span><Img id={ws[0].im} w={120} /></span>}
           {ws.length > 1 && <em>+{ws.length - 1}</em>}
         </div>
         <div className="orow-t">
@@ -73,7 +74,7 @@ const Track = ({ o }) => {
 };
 
 export function Overview() {
-  const { user, orders, wish, eligible, products } = useStore();
+  const { user, orders, wish, eligible, getProduct } = useStore();
   const live = orders.filter((o) => ACTIVE.includes(o.status));
   const spent = orders.filter((o) => o.status !== "Cancelled").reduce((a, o) => a + o.total, 0);
   const stats = [["Orders", orders.length, "orders"], ["In progress", live.length, "orders?f=active"], ["Total spent", fmt(spent), "orders", true], ["Wishlist", wish.length, "wishlist"]];
@@ -85,7 +86,7 @@ export function Overview() {
       </div>
       {eligible.length > 0 && (
         <Panel className="rvcta">
-          <div><b>{eligible.length === 1 ? `How do you like your ${products[eligible[0].pid].n}?` : `${eligible.length} delivered watches are waiting for your review`}</b>
+          <div><b>{eligible.length === 1 ? `How do you like your ${getProduct(eligible[0].pid)?.n || "watch"}?` : `${eligible.length} delivered watches are waiting for your review`}</b>
             <p className="mute sm">A quick review helps other buyers. It is completely optional.</p></div>
           <Button size="s" to="/account/orders?f=review">Rate {eligible.length === 1 ? "it" : "them"}</Button>
         </Panel>
@@ -130,7 +131,7 @@ export function Orders() {
 }
 
 function OrdersList() {
-  const { orders, eligible, products } = useStore();
+  const { orders, eligible, getProduct } = useStore();
   const [sp] = useSearchParams();
   const reviewIds = new Set(eligible.map((e) => e.orderId));
   const filters = [...ORDER_FILTERS, ["review", "To review", (o) => reviewIds.has(o.id)]];
@@ -146,7 +147,7 @@ function OrdersList() {
   // Everything except the status chip, so the numbers on the chips always match the search and the dates.
   const base = orders.filter((o) => {
     const d = ymd(new Date(o.date));
-    return (!lo || (d >= lo && d <= hi)) && (!needle || `${o.id} ${o.items.map((i) => products[i.id]?.n || "").join(" ")}`.toLowerCase().includes(needle));
+    return (!lo || (d >= lo && d <= hi)) && (!needle || `${o.id} ${o.items.map((i) => i.n || getProduct(i.id)?.n || "").join(" ")}`.toLowerCase().includes(needle));
   });
   const test = filters.find((x) => x[0] === f)[2];
   const list = base.filter(test).sort(ORDER_SORTS.find(([k]) => k === sort)[2]);
@@ -192,7 +193,7 @@ function OrdersList() {
 
 export function OrderDetail() {
   const { id } = useParams();
-  const { orders, products, cart, addToCart, showToast, reviews } = useStore();
+  const { orders, getProduct, cart, addToCart, showToast, reviews } = useStore();
   const [dlg, setDlg] = useState(null);
   const o = orders.find((x) => x.id === id);
   if (!o) return <Empty text="We could not find that order." to="/account/orders" label="Back to orders" />;
@@ -211,13 +212,14 @@ export function OrderDetail() {
       {o.status !== "Cancelled" && o.status !== "Delivered" && <p className="mute sm" style={{ marginBottom: 16 }}>Once your order is delivered we will invite you to review your watch. It is optional.</p>}
       <Panel style={{ marginBottom: 16 }}>
         {o.items.map((x) => {
-          const w = products[x.id];
+          const w = getProduct(x.id);
+          const nm = x.n || w?.n || "Watch no longer sold";
           return (
-            <div className="line" key={x.id} style={{ gridTemplateColumns: "72px 1fr auto", padding: "12px 0" }}>
-              <div className="t" style={{ width: 72, height: 72 }}><Img id={w.im[0]} w={200} /></div>
-              <div><Link to={`/product/${w.id}`}>{w.n}</Link><div className="mute sm">Quantity {x.q}</div>
-                {o.status === "Delivered" && (() => {
-                  const key = `${o.id}:${w.id}`;
+            <div className="line" key={x.id} style={{ gridTemplateColumns: "72px minmax(0,1fr) auto", padding: "12px 0" }}>
+              <div className="t" style={{ width: 72, height: 72 }}>{w && <Img id={w.im[0]} w={200} />}</div>
+              <div>{w ? <Link to={`/product/${w.id}`}>{nm}</Link> : <span>{nm}</span>}<div className="mute sm">Quantity {x.q}</div>
+                {o.status === "Delivered" && w && (() => {
+                  const key = `${o.id}:${x.id}`;
                   const rv = reviews.find((r) => r.key === key);
                   return rv
                     ? <div className="orev"><Stars n={rv.r} /><span className="mute sm">Your review{rv.status !== "published" ? ` (${rv.status === "pending" ? "waiting for approval" : "hidden"})` : ""}</span><button type="button" className="lnk" onClick={() => setDlg({ existing: rv })}>Edit</button></div>
@@ -241,20 +243,21 @@ export function OrderDetail() {
         <b style={{ fontWeight: 500, display: "block", marginTop: 12 }}>Payment</b>
         <p className="mute">{o.pay}, payment {(o.payStatus || "Pending").toLowerCase()}{o.payRef ? `, ref ${o.payRef}` : ""}</p>
       </Panel>
-      <div className="row"><Button onClick={again}>Buy again</Button><Button to="/contact" variant="o">Need help?</Button></div>
+      <OrderActions o={o} />
+      <div className="row"><Button onClick={again}>Buy again</Button><Button to={`/receipt/${o.id}`} variant="o">Receipt</Button><Button to="/contact" variant="o">Need help?</Button></div>
       {dlg && <ReviewDialog {...dlg} onClose={() => setDlg(null)} />}
     </>
   );
 }
 
 export function Wishlist() {
-  const { wish, products } = useStore();
+  const { wish, getProduct } = useStore();
   const pg = usePaged(wish, PAGE_SIZE.wishlist);
   return (
     <>
       <PageHead title="Wishlist" sub={wish.length ? `${wish.length} saved ${wish.length === 1 ? "watch" : "watches"}.` : "Watches you save with the heart will be kept here."} />
       {wish.length
-        ? <div className="grid g3">{pg.items.map((i) => <ProductCard key={i} p={products[i]} />)}</div>
+        ? <div className="grid g3">{pg.items.map((i) => getProduct(i) && <ProductCard key={i} p={getProduct(i)} />)}</div>
         : <Empty text="Tap the heart on any watch to save it here." />}
       <Pager {...pg} onPage={pg.setPage} noun="watches" />
     </>
@@ -262,36 +265,53 @@ export function Wishlist() {
 }
 
 export function Addresses() {
-  const { addrs, user, zones, saveAddr, deleteAddr } = useStore();
+  const { addrs, user, zones, saveAddr, deleteAddr, ask } = useStore();
   const [ed, setEd] = useState(null); // null = closed, -1 = new, n = editing index
+  const [errs, setErrs] = useState({});
   const a = ed != null && ed >= 0 ? addrs[ed] : {};
+  const full = addrs.length >= 10;
+  const open = (v) => { setErrs({}); setEd(v); };
+  const clear = (k) => () => setErrs((x) => (x[k] ? { ...x, [k]: undefined } : x));
   const submit = (e) => {
     e.preventDefault();
-    const d = Object.fromEntries(new FormData(e.currentTarget));
-    saveAddr({ label: d.label, name: d.name, phone: d.phone, zone: +d.zone, district: d.district, street: d.street }, ed >= 0 ? ed : null);
-    setEd(null);
+    const form = e.currentTarget;
+    const d = Object.fromEntries(new FormData(form));
+    const er = {};
+    if (!clean(d.label)) er.label = "Give the address a short label, like Home.";
+    if (!isName(d.name)) er.name = "Enter the full name.";
+    if (!isPhone(d.phone)) er.phone = "Enter a valid phone number, like 0788 123 456.";
+    if (clean(d.district).length < 2) er.district = "Enter the district.";
+    if (clean(d.street).length < 3) er.street = "Enter the street and a landmark.";
+    if (Object.keys(er).length) {
+      setErrs(er);
+      requestAnimationFrame(() => form.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    if (saveAddr({ label: d.label, name: d.name, phone: d.phone, zone: +d.zone, district: d.district, street: d.street }, ed >= 0 ? ed : null)) open(null);
   };
   return (
     <>
-      <PageHead title="Addresses" sub="Saved places we can deliver to. Pick one at checkout to save time." actions={ed == null && <Button size="s" onClick={() => setEd(-1)}>Add address</Button>} />
+      <PageHead title="Addresses" sub="Saved places we can deliver to. Pick one at checkout to save time."
+        actions={ed == null && <Button size="s" onClick={() => open(-1)} disabled={full} title={full ? "You can save up to 10 addresses" : undefined}>Add address</Button>} />
+      {full && ed == null && <p className="mute sm" style={{ marginBottom: 12 }}>You have saved 10 addresses, the most we keep. Delete one to add another.</p>}
       {ed != null && (
-        <form className="panel stack" style={{ marginBottom: 20 }} onSubmit={submit} key={ed}>
+        <form className="panel stack" style={{ marginBottom: 20 }} noValidate onSubmit={submit} key={ed}>
           <h2 className="h3">{ed >= 0 ? "Edit address" : "New address"}</h2>
           <div className="two">
-            <Field label="Label"><Input name="label" required placeholder="Home" defaultValue={a.label} /></Field>
-            <Field label="Full name"><Input name="name" required defaultValue={a.name || user.name} /></Field>
+            <Field label="Label" error={errs.label}><Input name="label" maxLength={20} placeholder="Home" defaultValue={a.label} aria-invalid={!!errs.label} onChange={clear("label")} /></Field>
+            <Field label="Full name" error={errs.name}><Input name="name" maxLength={60} autoComplete="name" defaultValue={a.name || user.name} aria-invalid={!!errs.name} onChange={clear("name")} /></Field>
           </div>
           <div className="two">
-            <Field label="Phone"><Input name="phone" type="tel" required defaultValue={a.phone || user.phone} /></Field>
+            <Field label="Phone" error={errs.phone}><Input name="phone" type="tel" inputMode="tel" maxLength={20} placeholder="07XX XXX XXX" autoComplete="tel" defaultValue={a.phone || user.phone} aria-invalid={!!errs.phone} onChange={clear("phone")} /></Field>
             <Field label="Delivery area">
               <Select name="zone" defaultValue={a.zone || 0}>{zones.map((z, i) => <option key={i} value={i}>{z.name}</option>)}</Select>
             </Field>
           </div>
           <div className="two">
-            <Field label="District"><Input name="district" required defaultValue={a.district} /></Field>
-            <Field label="Street and landmark"><Input name="street" required defaultValue={a.street} /></Field>
+            <Field label="District" error={errs.district}><Input name="district" maxLength={40} defaultValue={a.district} aria-invalid={!!errs.district} onChange={clear("district")} /></Field>
+            <Field label="Street and landmark" error={errs.street}><Input name="street" maxLength={120} defaultValue={a.street} aria-invalid={!!errs.street} onChange={clear("street")} /></Field>
           </div>
-          <div className="row"><Button>Save address</Button><Button type="button" variant="o" onClick={() => setEd(null)}>Cancel</Button></div>
+          <div className="row"><Button>Save address</Button><Button type="button" variant="o" onClick={() => open(null)}>Cancel</Button></div>
         </form>
       )}
       {addrs.map((x, i) => (
@@ -300,7 +320,7 @@ export function Addresses() {
             <b style={{ fontWeight: 500 }}>{x.label}</b>
             <div className="mute sm">{x.name}, {x.phone}<br />{x.street}, {x.district}<br />{(zones[x.zone] || zones[0]).name}</div>
           </div>
-          <div className="row"><Button variant="o" size="s" onClick={() => setEd(i)}>Edit</Button><Button variant="o" size="s" onClick={() => { if (window.confirm(`Delete the address "${x.label}"?`)) deleteAddr(i); }}>Delete</Button></div>
+          <div className="row"><Button variant="o" size="s" onClick={() => open(i)}>Edit</Button><Button variant="o" size="s" onClick={() => ask(`Delete the address "${x.label}"?`, () => deleteAddr(i), { yes: "Yes, delete" })}>Delete</Button></div>
         </Panel>
       ))}
       {!addrs.length && ed == null && <Panel><p className="mute">Save an address to speed up checkout.</p></Panel>}
@@ -309,15 +329,65 @@ export function Addresses() {
 }
 
 export function Profile() {
-  const { user, updateProfile } = useStore();
+  const { user, updateProfile, changePassword } = useStore();
+  const [errs, setErrs] = useState({});
+  const [pw, setPw] = useState({ cur: "", nw: "", again: "" });
+  const [pe, setPe] = useState({});
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const clear = (k) => () => setErrs((x) => (x[k] ? { ...x, [k]: undefined } : x));
+  const save = (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const d = new FormData(form);
+    const er = {};
+    if (!isName(d.get("name"))) er.name = "Enter your full name.";
+    if (String(d.get("phone")).trim() && !isPhone(d.get("phone"))) er.phone = "Enter a valid phone number, like 0788 123 456, or leave it empty.";
+    if (Object.keys(er).length) {
+      setErrs(er);
+      requestAnimationFrame(() => form.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    setErrs({});
+    updateProfile(d.get("name"), d.get("phone"));
+  };
+  const setP = (k) => (e) => { setPw({ ...pw, [k]: e.target.value }); if (pe[k]) setPe((x) => ({ ...x, [k]: undefined })); };
+  const savePw = async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const er = {};
+    if (!pw.cur) er.cur = "Enter your current password.";
+    if (pw.nw.length < 8) er.nw = "Use at least 8 characters.";
+    else if (pw.nw === pw.cur) er.nw = "Choose a password you have not used before.";
+    if (!er.nw && pw.again !== pw.nw) er.again = "The two passwords do not match.";
+    if (Object.keys(er).length) {
+      setPe(er);
+      requestAnimationFrame(() => form.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    setPe({}); setBusy(true);
+    const ok = await changePassword(pw.cur, pw.nw);
+    setBusy(false);
+    if (ok) setPw({ cur: "", nw: "", again: "" });
+  };
   return (
     <>
       <PageHead title="Profile" sub="The details we use for your orders and deliveries." />
-      <form className="panel stack" style={{ maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); updateProfile(d.get("name"), d.get("phone")); }}>
-        <Field label="Full name"><Input name="name" required defaultValue={user.name} /></Field>
+      <form className="panel stack" style={{ maxWidth: 560 }} noValidate onSubmit={save}>
+        <Field label="Full name" error={errs.name}><Input name="name" maxLength={60} autoComplete="name" defaultValue={user.name} aria-invalid={!!errs.name} onChange={clear("name")} /></Field>
         <Field label="Email"><Input value={user.email} disabled readOnly /></Field>
-        <Field label="Phone"><Input name="phone" type="tel" defaultValue={user.phone} /></Field>
+        <Field label="Phone" error={errs.phone}><Input name="phone" type="tel" inputMode="tel" maxLength={20} placeholder="07XX XXX XXX" autoComplete="tel" defaultValue={user.phone} aria-invalid={!!errs.phone} onChange={clear("phone")} /></Field>
         <Button>Save changes</Button>
+      </form>
+      <h2 className="h3" style={{ marginTop: 32 }}>Password</h2>
+      <form className="panel stack" style={{ maxWidth: 560, marginTop: 12 }} noValidate onSubmit={savePw}>
+        <Field label="Current password" error={pe.cur}><Input type={show ? "text" : "password"} maxLength={100} autoComplete="current-password" value={pw.cur} onChange={setP("cur")} aria-invalid={!!pe.cur} /></Field>
+        <div className="two">
+          <Field label="New password" error={pe.nw} hint="At least 8 characters."><Input type={show ? "text" : "password"} maxLength={100} autoComplete="new-password" value={pw.nw} onChange={setP("nw")} aria-invalid={!!pe.nw} /></Field>
+          <Field label="Confirm new password" error={pe.again}><Input type={show ? "text" : "password"} maxLength={100} autoComplete="new-password" value={pw.again} onChange={setP("again")} aria-invalid={!!pe.again} /></Field>
+        </div>
+        <label className="fchk"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /><span>Show passwords</span></label>
+        <div><Button disabled={busy}>{busy ? "Saving..." : "Change password"}</Button></div>
       </form>
     </>
   );

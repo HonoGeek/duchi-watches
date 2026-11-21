@@ -3,6 +3,7 @@ import { loadStripe } from "@stripe/stripe-js/pure";
 import { Elements, CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useStore } from "./store";
 import { Field, Input } from "./ui";
+import { cardExpiryOk, isLuhn } from "./lib";
 
 // Set VITE_STRIPE_PUBLISHABLE_KEY (pk_test_... or pk_live_...) in a .env file to use the real Stripe card field.
 const KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -41,9 +42,10 @@ function Demo({ reg }) {
   const digits = num.replace(/\D/g, "");
   useEffect(() => {
     reg.current = async () => {
-      if (digits.length < 13) return { error: "Enter a valid card number" };
+      if (!isLuhn(digits)) return { error: "Enter a valid card number. Check the digits and try again." };
       if (!/^\d\d\/\d\d$/.test(exp)) return { error: "Enter the expiry as MM/YY" };
-      if (cvc.length < 3) return { error: "Enter the 3 digit security code" };
+      if (!cardExpiryOk(exp)) return { error: "That expiry date is not valid or the card has expired" };
+      if (!/^\d{3,4}$/.test(cvc)) return { error: "Enter the 3 or 4 digit security code" };
       return { id: "preview_" + Date.now(), brand: "card", last4: digits.slice(-4) };
     };
     return () => { reg.current = null; };

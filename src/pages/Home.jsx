@@ -6,7 +6,7 @@ import HangingRail from "../HangingRail";
 import Videos from "../Videos";
 import Hero from "../Hero";
 import Faq from "../Faq";
-import { IM } from "../data";
+import { IM, cardEnabled } from "../data";
 import { fmt, byNewest } from "../lib";
 
 const MARQUEE = ["Quality checked", "Delivered across Rwanda", "MTN MoMo and Airtel Money", "Gift-ready packaging", "Friendly WhatsApp support"];
@@ -24,34 +24,29 @@ const CAT_DESC = {
   "Chronograph Watches": "Precision-inspired design with distinctive details. Made for those who appreciate functionality and bold character.",
 };
 
-// Entries with an empty answer are hidden. Fill them in once the policy is confirmed.
-const DELIVERY_TIME = ""; // e.g. "Kigali: same or next day. Other districts: 2 to 3 days."
-const RETURNS = "";       // returns / exchange policy
-const WARRANTY = "";      // warranty terms
-const TRACKING = "Sign in to your DUCHI account and open My orders to follow the status of your order.";
+// FAQ answers come from Admin > Policies. A question whose policy is not written yet is hidden.
 
 export default function Home() {
-  const { products, zones, cats } = useStore();
+  const { products, zones, cats, policies } = useStore();
   const live = products.filter((p) => p.active !== false);
   const fresh = [...live].sort(byNewest).slice(0, 6); // New arrivals: the 6 most recently added visible products
   const shownCats = cats.filter((c) => live.some((p) => p.c === c.name)); // empty categories stay hidden
-  const p0 = products[0];
   const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
   const zoneText = zones.map((z) => `${z.name} ${fmt(z.fee)}`).join(", ");
   const faq = [
     ["Where does DUCHI deliver?", zoneText ? `We deliver across Rwanda with one flat fee per order: ${zoneText}.` : "We deliver across Rwanda. The delivery fee is shown at checkout."],
-    ["What payment methods do you accept?", "MTN Mobile Money, Airtel Money, card or bank transfer."],
+    ["What payment methods do you accept?", cardEnabled() ? "MTN Mobile Money, Airtel Money, card or bank transfer." : "MTN Mobile Money, Airtel Money or bank transfer. Card payments are coming soon."],
     ["How can I place an order?", "Add your watches to the cart and enter your delivery details at checkout. We call you to confirm."],
-    ["How long does delivery take?", DELIVERY_TIME],
-    ["Can I return or exchange a watch?", RETURNS],
-    ["Do your watches come with a warranty?", WARRANTY],
-    ["How can I track my order?", TRACKING],
+    ["How long does delivery take?", policies.delivery.join(" ")],
+    ["Can I return or exchange a watch?", [policies.returnDays > 0 ? `You can ask to return a delivered watch from your account within ${policies.returnDays} days of delivery.` : "", ...policies.returns].join(" ").trim()],
+    ["Do your watches come with a warranty?", policies.warranty.join(" ")],
+    ["How can I track my order?", policies.tracking.join(" ")],
     ["How can I contact customer support?", "Message us on WhatsApp or use the contact page."],
   ]; // <Faq> drops unanswered and repeated questions
 
   return (
     <>
-      <Hero product={p0} minFee={minFee} />
+      <Hero minFee={minFee} />
 
       <div className="mq" aria-hidden="true">
         <div className="mqt">{[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((t, i) => <span key={i}>{t}<i /></span>)}</div>

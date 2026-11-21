@@ -4,19 +4,8 @@ import { useStore } from "../store";
 import { Button, Icon } from "../ui";
 import { fmt } from "../lib";
 
-/* ---------------------------------------------------------------------------------------------
-   Policy text. Write each policy as a list of short paragraphs and it appears on the page.
-   While a list is empty, that section shows a "being finalised" note with a contact button,
-   so the page never makes up a policy. Delivery fees come from your shipping zones automatically.
-   --------------------------------------------------------------------------------------------- */
-const POLICIES = {
-  delivery: [],  // e.g. ["Kigali: same or next day.", "Other districts: 2 to 3 days."]
-  returns: [],   // returns and exchange policy
-  warranty: [],  // warranty terms
-  tracking: ["To track your order, sign in to your DUCHI account and open My orders. You will see the status of each order there. You need to be signed in to view it."],
-  terms: [],     // terms of sale
-  privacy: [],   // how customer data is used
-};
+// The policy text is written by the shop owner in Admin > Policies. While one is empty, its section shows a "being finalised"
+// note, so the page never states a rule nobody wrote. Delivery fees come from the shipping zones automatically.
 
 const TOPICS = [
   ["delivery", "Delivery", "truck"],
@@ -38,7 +27,7 @@ function Pending() {
 const Paras = ({ list }) => list.map((t, i) => <p key={i}>{t}</p>);
 
 export default function Help() {
-  const { zones, user } = useStore();
+  const { zones, user, policies } = useStore();
   const { hash } = useLocation();
 
   // Footer and FAQ links use /help#returns and so on: scroll to the section after the page has rendered.
@@ -68,22 +57,23 @@ export default function Help() {
                 {zones.map((z) => <li key={z.name}><span>{z.name}</span><b>{fmt(z.fee)}</b></li>)}
               </ul>
             )}
-            {POLICIES.delivery.length ? <Paras list={POLICIES.delivery} /> : <Pending />}
+            {policies.delivery.length ? <Paras list={policies.delivery} /> : <Pending />}
           </article>
 
           <article id="returns" className="help-sec">
             <h2 className="h3">Returns and exchanges</h2>
-            {POLICIES.returns.length ? <Paras list={POLICIES.returns} /> : <Pending />}
+            {policies.returnDays > 0 && <p>You can ask to return a delivered watch from your account, within {policies.returnDays} days of delivery.</p>}
+            {policies.returns.length ? <Paras list={policies.returns} /> : policies.returnDays > 0 ? null : <Pending />}
           </article>
 
           <article id="warranty" className="help-sec">
             <h2 className="h3">Warranty</h2>
-            {POLICIES.warranty.length ? <Paras list={POLICIES.warranty} /> : <Pending />}
+            {policies.warranty.length ? <Paras list={policies.warranty} /> : <Pending />}
           </article>
 
           <article id="tracking" className="help-sec">
             <h2 className="h3">Order tracking</h2>
-            {POLICIES.tracking.length ? <Paras list={POLICIES.tracking} /> : <Pending />}
+            {policies.tracking.length ? <Paras list={policies.tracking} /> : <Pending />}
             <Button to={user ? "/account/orders" : "/login"} variant="o" size="s">{user ? "View my orders" : "Sign in to track my order"}</Button>
           </article>
         </div>
@@ -98,8 +88,9 @@ const LEGAL = {
   privacy: ["Privacy policy", "How DUCHI collects, uses and protects your information."],
 };
 export function Legal({ kind }) {
+  const { policies } = useStore();
   const [title, intro] = LEGAL[kind];
-  const body = POLICIES[kind];
+  const body = policies[kind];
   return (
     <section style={{ paddingTop: 56 }}><div className="wrap help-legal">
       <h1 className="h2">{title}</h1>

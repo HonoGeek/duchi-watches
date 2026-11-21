@@ -61,7 +61,7 @@ export default function Product() {
           )}
           <StockLeft p={p} q={qty} />
           <div className="row" ref={rowRef}>
-            <Qty value={qty} onMinus={() => setQty(Math.max(1, qty - 1))} onPlus={() => setQty(qty + 1)} />
+            <Qty value={qty} max={p.stock} onMinus={() => setQty(Math.max(1, qty - 1))} onPlus={() => setQty(Math.min(qty + 1, Math.max(1, p.stock)))} />
             {p.stock <= 0
               ? <Button variant="o" disabled style={{ flex: 1 }}>Sold out</Button>
               : <Button onClick={add} style={{ flex: 1 }}>Add to cart</Button>}

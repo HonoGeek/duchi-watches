@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useStore } from "./store";
 import { Button, Field, Icon, Img, Textarea, Input } from "./ui";
 import { REVIEW_MAX, REVIEW_MIN } from "./data";
-import { readImage } from "./lib";
+import { MAX_IMAGE, readImage } from "./lib";
 
 const WORDS = ["", "Poor", "Fair", "Good", "Very good", "Excellent"];
 const STAR = "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
@@ -58,6 +58,7 @@ export default function ReviewDialog({ item, existing, onClose }) {
     e.target.value = "";
     if (!fl) return;
     if (!fl.type.startsWith("image/")) { showToast("Please choose an image file"); return; }
+    if (fl.size > MAX_IMAGE) { showToast("That photo is too large. Please choose one under 15 MB."); return; }
     setBusy(true);
     try { setImg(await readImage(fl, 900, 0.8)); } catch { showToast("Could not read that photo. Try a JPG or PNG."); }
     setBusy(false);

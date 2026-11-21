@@ -21,7 +21,7 @@ export default function Cart() {
                     <div className="mute sm">{p.s}</div>
                     <StockLeft p={p} q={x.q} />
                     <div className="row" style={{ marginTop: 10 }}>
-                      <Qty value={x.q} onMinus={() => changeQty(x.id, -1)} onPlus={() => changeQty(x.id, 1)} />
+                      <Qty value={x.q} max={p.stock} onMinus={() => changeQty(x.id, -1)} onPlus={() => changeQty(x.id, 1)} />
                       <Button variant="o" size="s" onClick={() => removeFromCart(x.id)}>Remove</Button>
                     </div>
                   </div>

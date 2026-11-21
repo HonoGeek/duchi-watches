@@ -28,6 +28,7 @@ export const AIcon = {
   pin: I(<><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></>),
   user: I(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>),
   mail: I(<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7.5l8.5 6 8.5-6" /></>),
+  doc: I(<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />),
   at: I(<><circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9" /></>),
 };
 
@@ -36,7 +37,7 @@ const GROUPS = [
   ["Overview", [["", "Dashboard", "grid"]]],
   ["Store", [["orders", "Orders", "bag"], ["products", "Products", "box"], ["categories", "Categories", "tag"], ["reviews", "Reviews", "star"], ["coupons", "Coupons", "ticket"], ["shipping", "Shipping", "truck"]]],
   ["Customers", [["messages", "Messages", "mail"], ["subscribers", "Email list", "at"]]],
-  ["Content", [["videos", "Videos", "play"]]],
+  ["Content", [["videos", "Videos", "play"], ["policies", "Policies", "doc"]]],
   ["System", [["payments", "Payments", "card"], ["team", "Team and roles", "users"], ["audit", "Audit log", "list"], ["settings", "Settings", "cog"]]],
 ];
 const LABELS = Object.fromEntries(GROUPS.flatMap(([, l]) => l.map(([p, n]) => [p, n])));
@@ -101,6 +102,7 @@ function Bell({ counts }) {
   useOutside(ref, close);
   const rows = [
     [counts.orders, "order", "waiting to be processed", "/admin/orders", AIcon.bag],
+    [counts.requests, "request", "waiting for your answer", "/admin/orders?req=1", AIcon.bag],
     [counts.messages, "message", "waiting to be read", "/admin/messages", AIcon.mail],
     [counts.low, "product", "low on stock (5 or fewer)", "/admin/products", AIcon.box],
     [counts.reviews, "review", "waiting for approval", "/admin/reviews", AIcon.star],
@@ -173,6 +175,7 @@ export default function AdminShell() {
     low: products.filter((p) => p.stock <= 5 && p.active !== false).length,
     reviews: (reviews || []).filter((r) => r.status === "pending").length,
     messages: (messages || []).filter((m) => !m.read).length,
+    requests: allOrders.filter((o) => o.cancelReq?.status === "pending" || o.returnReq?.status === "pending").length,
   }), [allOrders, products, reviews, messages]);
   const badge = { orders: counts.orders, reviews: counts.reviews, messages: counts.messages };
 

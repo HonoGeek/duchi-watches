@@ -12,15 +12,16 @@ import Login from "./pages/Login";
 import Contact from "./pages/Contact";
 import Help, { Legal } from "./pages/Help";
 import Success from "./pages/Success";
+import Receipt from "./pages/Receipt";
 import Account, { Overview, Orders, OrderDetail, Wishlist, Addresses, Profile } from "./pages/Account";
-import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit, Messages as AdminMessages, Subscribers } from "./pages/Admin";
+import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit, Messages as AdminMessages, Subscribers, Policies } from "./pages/Admin";
 
 export default function App() {
   const { pathname, hash } = useLocation();
   const { user } = useStore();
   const admin = pathname.startsWith("/admin");
   // The admin area and the signed-in customer dashboard have their own layout, so the shop header and footer are hidden there.
-  const dash = admin || (pathname.startsWith("/account") && !!user);
+  const dash = admin || (pathname.startsWith("/account") && !!user) || pathname.startsWith("/receipt"); // the receipt is a plain printable page
   useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps -- pages with a #section scroll themselves
   useEffect(() => {
     let raf = 0;
@@ -59,7 +60,8 @@ export default function App() {
           <Route path="/help" element={<Help />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
-          <Route path="/success" element={<Success />} />
+          <Route path="/success/:id" element={<Success />} />
+          <Route path="/receipt/:id" element={<Receipt />} />
           <Route path="/account" element={<Account />}>
             <Route index element={<Overview />} />
             <Route path="orders" element={<Orders />} />
@@ -83,6 +85,7 @@ export default function App() {
             <Route path="reviews" element={<ReviewsAdmin />} />
             <Route path="messages" element={<AdminMessages />} />
             <Route path="subscribers" element={<Subscribers />} />
+            <Route path="policies" element={<Policies />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

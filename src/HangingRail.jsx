@@ -196,7 +196,7 @@ export default function HangingRail({ items }) {
           <div className="rl-pr">{fmt(p.p)} <span className="mute sm">Delivery added at checkout</span></div>
 
           <div className="rl-l">Quantity</div>
-          <Qty value={qty} onMinus={() => setQty(Math.max(1, qty - 1))} onPlus={() => setQty(qty + 1)} />
+          <Qty value={qty} max={p.stock} onMinus={() => setQty(Math.max(1, qty - 1))} onPlus={() => setQty(Math.min(qty + 1, Math.max(1, p.stock)))} />
 
           <div className="rl-ct">
             {p.stock <= 0 ? <Button variant="o" disabled style={{ flex: 1 }}>Sold out</Button>

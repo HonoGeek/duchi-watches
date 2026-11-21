@@ -89,7 +89,7 @@ describe("Dashboard", () => {
     asRole("Staff");
     go("/admin");
     const labels = [...document.querySelectorAll(".db-at")].map((a) => a.textContent);
-    expect(labels.length).toBe(3);
+    expect(labels.length).toBe(4);                       // orders to process, payments, requests to answer, low stock
     expect(labels.some((t) => t.includes("Unread messages") || t.includes("Reviews"))).toBe(false);
   });
 });

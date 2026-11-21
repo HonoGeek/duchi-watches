@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { useStore } from "../store";
 import { Img, Button, Badge, Field, Input, Pager, Panel, Select, Chip, Stars, Table, Textarea, usePaged } from "../ui";
-import { IM, PAY_STATUS, PERM, ST } from "../data";
-import { ussd, waLink } from "../pay";
-import { fmt, dt, dtm, tm, ls, sv, readImage, byNewest } from "../lib";
+import { IM, PAY_STATUS, PERM, POLICY_KEYS, ST, cardEnabled } from "../data";
+import { ussd, waLink, smsLink, orderMessage } from "../pay";
+import RequestsPanel from "../AdminRequests";
+import { clean, fmt, dt, dtm, tm, ls, sv, readImage, byNewest, MAX_IMAGE } from "../lib";
 import ProductForm from "../ProductForm";
 import DateRange, { ymd } from "../DateRange";
 import AdminShell, { AIcon, PageHead } from "../AdminShell";
@@ -23,9 +24,17 @@ const Chev = ({ up }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={up ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} /></svg>
 );
 const StatusSelect = ({ o }) => {
-  const { setOrderStatus } = useStore();
+  const { setOrderStatus, ask } = useStore();
   return (
-    <Select style={{ height: 36, width: "auto" }} value={o.status} onChange={(e) => setOrderStatus(o.id, e.target.value)} aria-label="Order status">
+    <Select style={{ height: 36, width: "auto" }} value={o.status} aria-label="Order status"
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "Cancelled") { // asks in a toast first; the list keeps the old status until the answer is Yes
+          ask(`Cancel order ${o.id}? The watches go back into stock and the customer is told it was cancelled.`, () => setOrderStatus(o.id, v), { yes: "Yes, cancel order", no: "No, keep it" });
+          return;
+        }
+        setOrderStatus(o.id, v);
+      }}>
       {ST.map((s) => <option key={s}>{s}</option>)}
     </Select>
   );
@@ -88,7 +97,11 @@ function OrdersTable({ list, empty = "No orders yet." }) {
     <Table head={["Order", "Customer", "Contact", "Date", "Total", "Payment", "Status"]}>
       {list.map((o) => (
         <tr key={o.id}>
-          <td><Link to={`/admin/orders/${o.id}`}><b style={{ fontWeight: 500 }}>{o.id}</b></Link></td>
+          <td>
+            <Link to={`/admin/orders/${o.id}`}><b style={{ fontWeight: 500 }}>{o.id}</b></Link>
+            {o.cancelReq?.status === "pending" && <div style={{ marginTop: 4 }}><span className="pill warn">Cancel request</span></div>}
+            {o.returnReq?.status === "pending" && <div style={{ marginTop: 4 }}><span className="pill warn">Return request</span></div>}
+          </td>
           <td>{o.name}</td>
           <td><div className="contact"><a href={`tel:${o.phone}`}>{o.phone}</a><a href={`mailto:${o.cEmail || o.email}`}>{o.cEmail || o.email}</a></div></td>
           <td className="nw">{dt(o.date)}</td><td className="nw">{fmt(o.total)}</td>
@@ -146,7 +159,7 @@ function Trend({ cur, prev, n }) {
 const DIMS = [["category", "Category"], ["pay", "Payment method"], ["area", "Delivery area"], ["status", "Order status"]];
 
 export function Dashboard() {
-  const { allOrders, products, adm, messages, reviews } = useStore();
+  const { allOrders, products, getProduct, adm, messages, reviews } = useStore();
   const [saved] = useState(() => ls("duchi-dash", {}));
   const [preset, setPreset] = useState(PRESETS.some(([k]) => k === saved.preset) ? saved.preset : 30); // 7, 30, 90 or "custom"
   const [custom, setCustom] = useState({ from: "", to: "" });
@@ -167,7 +180,8 @@ export function Dashboard() {
   const ok = allOrders.filter((o) => o.status !== "Cancelled"); // cancelled orders never count as sales
   const inP = ok.filter((o) => dayOf(o) >= from && dayOf(o) <= to);
   const inPrev = ok.filter((o) => dayOf(o) >= pFrom && dayOf(o) <= pTo);
-  const sum = (l) => l.reduce((a, o) => a + o.total, 0);
+  const net = (o) => o.total - (o.returnReq?.refund?.amount || 0); // a refund recorded for a return comes off the revenue
+  const sum = (l) => l.reduce((a, o) => a + net(o), 0);
   const rev = sum(inP), cnt = inP.length, aov = cnt ? Math.round(rev / cnt) : 0;
   const revP = sum(inPrev), cntP = inPrev.length, aovP = cntP ? Math.round(revP / cntP) : 0;
   const unpaid = ok.filter((o) => (o.payStatus || "Pending") !== "Paid");
@@ -181,6 +195,7 @@ export function Dashboard() {
   const tiles = [
     [allOrders.filter((o) => o.status === "Processing").length, "Orders to process", "/admin/orders?status=Processing", "bag", "orders"],
     [unpaid.length, "Payments to confirm", "/admin/orders?pay=unpaid", "card", "orders"],
+    [allOrders.filter(hasReq).length, "Requests to answer", "/admin/orders?req=1", "mail", "orders"],
     [(messages || []).filter((m) => !m.read).length, "Unread messages", "/admin/messages", "mail", "messages"],
     [(reviews || []).filter((r) => r.status === "pending").length, "Reviews to approve", "/admin/reviews", "star", "reviews"],
     [low.length, "Low on stock", "/admin/products", "box", "products"],
@@ -201,7 +216,7 @@ export function Dashboard() {
 
   // ----- best sellers
   const sold = new Map();
-  inP.forEach((o) => o.items.forEach((it) => { const r = sold.get(it.id) || { id: it.id, q: 0, v: 0 }; r.q += it.q; r.v += it.p * it.q; sold.set(it.id, r); }));
+  inP.forEach((o) => o.items.forEach((it) => { const r = sold.get(it.id) || { id: it.id, q: 0, v: 0, n: it.n, c: it.c }; r.q += it.q; r.v += it.p * it.q; sold.set(it.id, r); }));
   const best = [...sold.values()].sort((a, b) => b.q - a.q || b.v - a.v);
   const units = best.reduce((a, r) => a + r.q, 0);
 
@@ -209,7 +224,7 @@ export function Dashboard() {
   const money = dim !== "status";
   const groups = new Map();
   const add = (k, v) => groups.set(k, (groups.get(k) || 0) + v);
-  if (dim === "category") inP.forEach((o) => o.items.forEach((it) => add(products[it.id]?.c || "Other", it.p * it.q)));
+  if (dim === "category") inP.forEach((o) => o.items.forEach((it) => add(it.c || getProduct(it.id)?.c || "Other", it.p * it.q)));
   else if (dim === "pay") inP.forEach((o) => add(o.pay || "Other", o.total));
   else if (dim === "area") inP.forEach((o) => add(o.area || "Other", o.total));
   else allOrders.filter((o) => dayOf(o) >= from && dayOf(o) <= to).forEach((o) => add(o.status, 1)); // every status, cancelled too
@@ -260,12 +275,12 @@ export function Dashboard() {
           <div className="db-ph"><div><b>Best sellers</b><span className="sub">{units} {units === 1 ? "item" : "items"} sold in this period</span></div></div>
           {best.length ? (
             <ul className="db-list">{best.slice(0, 5).map((r, i) => {
-              const p = products[r.id];
-              return p && (
+              const p = getProduct(r.id), nm = p?.n || r.n;
+              return nm && (
                 <li key={r.id}>
                   <span className="rk">{i + 1}</span>
-                  <div className="lthumb"><Img id={p.im[0]} w={100} /></div>
-                  <div className="lname"><span>{p.n}</span><span className="mute sm">{p.c}</span></div>
+                  <div className="lthumb">{p && <Img id={p.im[0]} w={100} />}</div>
+                  <div className="lname"><span>{nm}</span><span className="mute sm">{p?.c || r.c || ""}</span></div>
                   <div className="vl"><b>{r.q} sold</b><span className="mute">{fmt(r.v)}</span></div>
                 </li>
               );
@@ -321,6 +336,7 @@ const ORDER_SORTS = [
   ["total", "Highest total", (a, b) => b.total - a.total || byDate(a, b)],
 ];
 const isPaid = (o) => (o.payStatus || "Pending") === "Paid";
+const hasReq = (o) => o.cancelReq?.status === "pending" || o.returnReq?.status === "pending"; // a customer is waiting for an answer
 
 // The key makes the page start fresh when it is opened from a dashboard tile (/admin/orders?status=Processing or ?pay=unpaid).
 export function AdminOrders() {
@@ -333,6 +349,7 @@ function OrdersPage() {
   const [sp] = useSearchParams();
   const [f, setF] = useState(ST.includes(sp.get("status")) ? sp.get("status") : "All");
   const [pay, setPay] = useState(["paid", "unpaid"].includes(sp.get("pay")) ? sp.get("pay") : "all");
+  const [req, setReq] = useState(sp.get("req") === "1"); // only orders where a customer is waiting for an answer
   const [q, setQ] = useState("");
   const [range, setRange] = useState({ from: "", to: "" });
   const [sort, setSort] = useState("action");
@@ -342,20 +359,22 @@ function OrdersPage() {
   allOrders.forEach((o) => { const d = ymd(new Date(o.date)); days[d] = (days[d] || 0) + 1; });
 
   // Everything except the status chip, so the numbers on the chips always match the other filters.
-  const base = allOrders.filter((o) => {
+  const baseNoReq = allOrders.filter((o) => {
     const d = ymd(new Date(o.date));
     const hay = `${o.id} ${o.name} ${o.phone} ${o.cEmail || ""} ${o.email} ${o.pay}`.toLowerCase();
     return (!lo || (d >= lo && d <= hi))
       && (pay === "all" || (pay === "paid" ? isPaid(o) : o.status !== "Cancelled" && !isPaid(o)))
       && (!needle || hay.includes(needle) || hay.replace(/\s+/g, "").includes(tight));
   });
+  const base = req ? baseNoReq.filter(hasReq) : baseNoReq;
+  const reqCount = baseNoReq.filter(hasReq).length;
   const count = (s) => (s === "All" ? base.length : base.filter((o) => o.status === s).length);
   const cmp = ORDER_SORTS.find(([k]) => k === sort)[2];
   const list = (f === "All" ? base : base.filter((o) => o.status === f)).sort(cmp);
-  const pg = usePaged(list, PAGE_SIZE.orders, `${f}|${pay}|${q}|${lo}|${hi}|${sort}`);
+  const pg = usePaged(list, PAGE_SIZE.orders, `${f}|${pay}|${q}|${lo}|${hi}|${sort}|${req}`);
   const waiting = allOrders.filter((o) => o.status === "Processing").length;
-  const filtered = !!(f !== "All" || pay !== "all" || needle || lo);
-  const clear = () => { setF("All"); setPay("all"); setQ(""); setRange({ from: "", to: "" }); };
+  const filtered = !!(f !== "All" || pay !== "all" || needle || lo || req);
+  const clear = () => { setF("All"); setPay("all"); setReq(false); setQ(""); setRange({ from: "", to: "" }); };
 
   return (
     <Allow sec="orders">
@@ -376,6 +395,7 @@ function OrdersPage() {
       </div>
       <div className="row ofilters" role="group" aria-label="Filter by status">
         {["All", ...ST].map((c) => <Chip key={c} on={c === f} aria-pressed={c === f} onClick={() => setF(c)}>{c}<span className="ocnt">{count(c)}</span></Chip>)}
+        {(reqCount > 0 || req) && <Chip on={req} aria-pressed={req} onClick={() => setReq(!req)}>Requests<span className="ocnt">{reqCount}</span></Chip>}
       </div>
       <OrdersTable list={pg.items} empty={allOrders.length ? "No orders match your filters." : "No orders yet."} />
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
@@ -385,14 +405,14 @@ function OrdersPage() {
 
 export function AdminOrderDetail() {
   const { id } = useParams();
-  const { allOrders, products } = useStore();
+  const { allOrders, getProduct } = useStore();
   const o = allOrders.find((x) => x.id === id);
   if (!o) return <None text="Order not found." />;
   return (
     <>
-      <Title sub={`Placed ${tm(o.date)} by ${o.name}`} actions={<><Button to="/admin/orders" variant="o" size="s">Back to orders</Button><StatusSelect o={o} /></>}>Order {o.id}</Title>
+      <Title sub={`Placed ${tm(o.date)} by ${o.name}`} actions={<><Button to="/admin/orders" variant="o" size="s">Back to orders</Button><Button to={`/receipt/${o.id}`} variant="o" size="s">Receipt</Button><StatusSelect o={o} /></>}>Order {o.id}</Title>
       <Panel style={{ marginBottom: 16 }}>
-        {o.items.map((x) => <div className="r row" style={{ justifyContent: "space-between", padding: "8px 0" }} key={x.id}><span>{products[x.id].n} × {x.q}</span><span>{fmt(x.p * x.q)}</span></div>)}
+        {o.items.map((x) => <div className="r row" style={{ justifyContent: "space-between", padding: "8px 0" }} key={x.id}><span>{x.n || getProduct(x.id)?.n || "Removed watch"} × {x.q}</span><span>{fmt(x.p * x.q)}</span></div>)}
         <div className="sum">
           <div className="r"><span>Subtotal</span><span>{fmt(o.sub)}</span></div>
           {o.disc > 0 && <div className="r"><span>Discount {o.coupon}</span><span>−{fmt(o.disc)}</span></div>}
@@ -405,9 +425,11 @@ export function AdminOrderDetail() {
         <p className="mute" style={{ margin: "6px 0 12px" }}>{o.name}<br />{o.phone}<br />{o.cEmail || o.email}</p>
         <div className="row">
           <Button variant="o" size="s" href={`tel:${o.phone}`}>Call</Button>
-          <Button variant="o" size="s" href={waLink(o.phone)} target="_blank" rel="noopener noreferrer">WhatsApp</Button>
+          <Button variant="o" size="s" href={waLink(o.phone, orderMessage(o))} target="_blank" rel="noopener noreferrer">WhatsApp update</Button>
+          <Button variant="o" size="s" href={smsLink(o.phone, orderMessage(o))}>SMS update</Button>
           <Button variant="o" size="s" href={`mailto:${o.cEmail || o.email}`}>Email</Button>
         </div>
+        <p className="fhint" style={{ marginTop: 8 }}>The update opens in WhatsApp or your messages app with a short message already typed, based on where the order is now. You press send.</p>
         <b style={{ fontWeight: 500, display: "block", marginTop: 16 }}>Delivery address</b>
         <p className="mute">{o.street}, {o.district} ({o.area})</p>
       </Panel>
@@ -419,13 +441,15 @@ export function AdminOrderDetail() {
         <p className="mute">{o.pay}{o.card ? `, card ending ${o.card.last4}` : ""}</p>
         {o.payRef && <p className="mute">Reference: {o.payRef}</p>}
         {o.payPhone && <p className="mute">Paid from: <a href={`tel:${o.payPhone}`}>{o.payPhone}</a></p>}
+        {o.payUpdatedAt && <p className="mute">The customer sent the payment details again on {dtm(o.payUpdatedAt)}.</p>}
       </Panel>
+      <div style={{ marginTop: 16 }}><RequestsPanel o={o} /></div>
     </>
   );
 }
 
 export function AdminProducts() {
-  const { products, cats, adm, toggleProduct, setStock } = useStore();
+  const { products, getProduct, cats, adm, toggleProduct, setStock } = useStore();
   const [ed, setEd] = useState(null); // null closed, -1 new, n edit
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
@@ -446,7 +470,7 @@ export function AdminProducts() {
   }).sort(sort === "updated" ? (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0) || byNewest(a, b) : sort === "oldest" ? (a, b) => byNewest(b, a) : byNewest);
   const pg = usePaged(matches, PAGE_SIZE.products, `${q}|${cat}|${show}|${by}|${lo}|${hi}|${sort}`);
   if (can && ed != null) {
-    return <Allow sec="products"><ProductForm key={ed} p={ed >= 0 ? products[ed] : null} onDone={() => setEd(null)} /></Allow>;
+    return <Allow sec="products"><ProductForm key={ed} p={ed >= 0 ? getProduct(ed) : null} onDone={() => setEd(null)} /></Allow>;
   }
   const live = products.filter((x) => x.active !== false).length;
   const lowN = products.filter((x) => x.stock <= 5).length;
@@ -485,7 +509,12 @@ export function AdminProducts() {
               </div></td>
               <td>{x.c}</td><td className="nw">{fmt(x.p)}</td>
               <td><Input type="number" min="0" key={x.stock} defaultValue={x.stock} className={`stockin${x.stock === 0 ? " out" : x.stock <= 5 ? " low" : ""}`} style={{ width: 84, height: 36 }} aria-label={`Stock of ${x.n}`}
-                onBlur={(e) => { if (+e.target.value !== x.stock) setStock(x.id, +e.target.value); }} /></td>
+                onBlur={(e) => {
+                  const raw = e.target.value.trim();
+                  if (raw === String(x.stock)) return;
+                  const n = /^\d+$/.test(raw) ? Number(raw) : NaN;
+                  if (!setStock(x.id, n)) e.target.value = x.stock; // a wrong value goes back to the saved stock, with a message
+                }} /></td>
               <td><span className={`pill ${x.active === false ? "off" : "good"}`}>{x.active === false ? "Hidden" : "Visible"}</span></td>
               <td><div className="pdates">
                 <span><i>Added</i>{x.createdAt ? dtm(x.createdAt) : <span className="na">Date not recorded</span>}</span>
@@ -518,7 +547,7 @@ function CatName({ name, onSave }) {
 }
 
 export function Categories() {
-  const { cats, products, addCategory, renameCategory, deleteCategory, moveCategory, setCategoryImage, showToast } = useStore();
+  const { cats, products, addCategory, renameCategory, deleteCategory, moveCategory, setCategoryImage, showToast, ask } = useStore();
   const [name, setName] = useState("");
   const count = (c) => products.filter((p) => p.c === c.name).length;
   const cover = (c) => c.img || products.find((p) => p.c === c.name)?.im[0] || "";
@@ -528,6 +557,7 @@ export function Categories() {
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) { showToast("Please choose an image file"); return; }
+    if (file.size > MAX_IMAGE) { showToast("That photo is too large. Please choose one under 15 MB."); return; }
     try { setCategoryImage(i, await readImage(file, 900, 0.8)); } catch { showToast("Could not read that photo. Try a JPG or PNG."); }
   };
   return (
@@ -556,7 +586,7 @@ export function Categories() {
                   <button type="button" className="ib arr" disabled={i === 0} onClick={() => moveCategory(i, -1)} aria-label={`Move ${c.name} up`}><Chev up /></button>
                   <button type="button" className="ib arr" disabled={i === cats.length - 1} onClick={() => moveCategory(i, 1)} aria-label={`Move ${c.name} down`}><Chev /></button>
                 </div></td>
-                <td><Button variant="o" size="s" disabled={n > 0} onClick={() => { if (window.confirm(`Delete the category "${c.name}"?`)) deleteCategory(i); }}>Delete</Button></td>
+                <td><Button variant="o" size="s" disabled={n > 0} onClick={() => ask(`Delete the category "${c.name}"?`, () => deleteCategory(i), { yes: "Yes, delete" })}>Delete</Button></td>
               </tr>
             );
           })}
@@ -649,7 +679,7 @@ export function Videos() {
 }
 
 export function ReviewsAdmin() {
-  const { reviews, products, setReviewStatus, replyReview, deleteReview } = useStore();
+  const { reviews, getProduct, setReviewStatus, replyReview, deleteReview, ask } = useStore();
   const [f, setF] = useState("All");
   const [q, setQ] = useState("");
   const [rep, setRep] = useState(null); // the review being answered
@@ -658,7 +688,7 @@ export function ReviewsAdmin() {
   const avg = reviews.length ? (reviews.reduce((a, r) => a + r.r, 0) / reviews.length).toFixed(1) : "0.0";
   const match = reviews.filter((r) =>
     (f === "All" || (f === "Published" && r.status === "published") || (f === "Pending" && r.status === "pending") || (f === "Hidden" && r.status === "hidden") || (f === "Low ratings" && r.r <= 2))
-    && `${r.t} ${r.n} ${products[r.pid]?.n || ""}`.toLowerCase().includes(q.trim().toLowerCase()))
+    && `${r.t} ${r.n} ${getProduct(r.pid)?.n || ""}`.toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => new Date(b.date) - new Date(a.date));
   const pg = usePaged(match, PAGE_SIZE.reviews, `${f}|${q}`);
   const status = { published: ["good", "Published"], pending: ["warn", "Pending"], hidden: ["off", "Hidden"] };
@@ -691,13 +721,13 @@ export function ReviewsAdmin() {
                   </div>
                 )}
               </div></td>
-              <td><Link to={`/product/${r.pid}`}>{products[r.pid]?.n}</Link></td>
+              <td><Link to={`/product/${r.pid}`}>{getProduct(r.pid)?.n}</Link></td>
               <td><Stars n={r.r} /></td>
               <td><span className={`pill ${status[r.status][0]}`}>{status[r.status][1]}</span></td>
               <td><div className="row" style={{ flexWrap: "nowrap" }}>
                 <Button variant="o" size="s" onClick={() => setReviewStatus(r.id, r.status === "published" ? "hidden" : "published")}>{r.status === "published" ? "Hide" : "Publish"}</Button>
                 <Button variant="o" size="s" onClick={() => { setRep(r.id); setText(r.reply || ""); }}>{r.reply ? "Edit reply" : "Reply"}</Button>
-                <Button variant="o" size="s" onClick={() => { if (window.confirm("Delete this review for good?")) deleteReview(r.id); }}>Delete</Button>
+                <Button variant="o" size="s" onClick={() => ask("Delete this review for good?", () => deleteReview(r.id), { yes: "Yes, delete" })}>Delete</Button>
               </div></td>
             </tr>
           ))}
@@ -709,7 +739,7 @@ export function ReviewsAdmin() {
 }
 
 export function Messages() {
-  const { messages, setMessageRead, deleteMessage } = useStore();
+  const { messages, setMessageRead, deleteMessage, ask } = useStore();
   const [f, setF] = useState("All");
   const [q, setQ] = useState("");
   const unread = messages.filter((m) => !m.read).length;
@@ -746,7 +776,7 @@ export function Messages() {
               <td><div className="row mact">
                 <Button variant="o" size="s" href={`mailto:${m.email}?subject=${encodeURIComponent("Your message to DUCHI")}`} onClick={() => { if (!m.read) setMessageRead(m.id, true, true); }}>Reply</Button>
                 <Button variant="o" size="s" onClick={() => setMessageRead(m.id, !m.read)}>{m.read ? "Mark unread" : "Mark read"}</Button>
-                <Button variant="o" size="s" onClick={() => { if (window.confirm(`Delete the message from ${m.name}?`)) deleteMessage(m.id); }}>Delete</Button>
+                <Button variant="o" size="s" onClick={() => ask(`Delete the message from ${m.name}?`, () => deleteMessage(m.id), { yes: "Yes, delete" })}>Delete</Button>
               </div></td>
             </tr>
           ))}
@@ -761,7 +791,7 @@ export function Messages() {
 const csvCell = (v) => { const t = String(v); return `"${(/^[=+\-@]/.test(t) ? "'" + t : t).replace(/"/g, '""')}"`; };
 
 export function Subscribers() {
-  const { subscribers, removeSubscriber, showToast } = useStore();
+  const { subscribers, removeSubscriber, showToast, ask } = useStore();
   const [q, setQ] = useState("");
   // Newest first. Sign-ups from before dates were recorded have no date and keep the order they were saved in.
   const all = subscribers.map((s, i) => ({ ...s, i })).sort((a, b) => (new Date(b.date || 0) - new Date(a.date || 0)) || b.i - a.i);
@@ -797,7 +827,7 @@ export function Subscribers() {
             <tr key={s.email}>
               <td><a href={`mailto:${s.email}`}>{s.email}</a></td>
               <td className="nw">{s.date ? dt(s.date) : <span className="mute">Date not recorded</span>}</td>
-              <td><Button variant="o" size="s" onClick={() => { if (window.confirm(`Remove ${s.email} from the email list?`)) removeSubscriber(s.email); }}>Remove</Button></td>
+              <td><Button variant="o" size="s" onClick={() => ask(`Remove ${s.email} from the email list?`, () => removeSubscriber(s.email), { yes: "Yes, remove" })}>Remove</Button></td>
             </tr>
           ))}
         </Table>
@@ -811,21 +841,64 @@ export function Subscribers() {
   );
 }
 
+// The owner writes the shop's rules here. They show on the Help page, in Terms and Privacy and in the home page questions.
+// Nothing is invented: a policy left empty shows "being finalised" to customers.
+const POLICY_HINT = {
+  delivery: "e.g. Kigali: same or next day.\nOther districts: 2 to 3 days.",
+  returns: "Write your returns and exchange rules, one paragraph per line.",
+  warranty: "Write your warranty terms.",
+  tracking: "How customers can follow an order.",
+  terms: "The conditions that apply when someone buys from you.",
+  privacy: "How you use and protect customer information.",
+};
+export function Policies() {
+  const { policies, savePolicies } = useStore();
+  const init = () => ({ returnDays: String(policies.returnDays), ...Object.fromEntries(POLICY_KEYS.map(([k]) => [k, policies[k].join("\n")])) });
+  const [f, setF] = useState(init);
+  const dirty = JSON.stringify(f) !== JSON.stringify(init());
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  return (
+    <Allow sec="policies">
+      <Title sub="Write your shop's rules here. They show on the Help page, in Terms and Privacy and in the questions on the home page. One paragraph per line.">Policies</Title>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); savePolicies(f); }}>
+        <Panel className="stack">
+          <h2 className="h3">Returns</h2>
+          <Field label="Return period (days after delivery)">
+            <Input type="number" inputMode="numeric" min="0" max="90" step="1" required style={{ maxWidth: 180 }} value={f.returnDays} onChange={set("returnDays")} />
+          </Field>
+          <p className="fhint" style={{ margin: 0 }}>Customers can ask to return a delivered watch from their account within this many days. Use 0 to keep online returns closed: customers are then asked to contact you.</p>
+        </Panel>
+        {POLICY_KEYS.map(([k, label]) => (
+          <Panel className="stack" key={k}>
+            <div className="head" style={{ alignItems: "center", marginBottom: 0 }}>
+              <h2 className="h3">{label}</h2>
+              <span className={`pill ${f[k].trim() ? "good" : "off"}`}>{f[k].trim() ? "Published" : "Not written yet"}</span>
+            </div>
+            <Textarea rows={5} maxLength={20000} aria-label={label} placeholder={POLICY_HINT[k]} value={f[k]} onChange={set(k)} />
+          </Panel>
+        ))}
+        <div className="row"><Button disabled={!dirty}>Save policies</Button>{dirty && <Button type="button" variant="o" onClick={() => setF(init())}>Discard</Button>}</div>
+      </form>
+    </Allow>
+  );
+}
+
 export function Coupons() {
   const { coupons, addCoupon, toggleCoupon } = useStore();
+  const [ctype, setCtype] = useState("pct");
   const pg = usePaged(coupons, PAGE_SIZE.coupons);
   const submit = (e) => {
     e.preventDefault();
     const form = e.currentTarget, d = Object.fromEntries(new FormData(form));
-    if (addCoupon({ code: d.code.trim().toUpperCase(), type: d.type, val: +d.val, active: true })) form.reset();
+    if (addCoupon({ code: d.code, type: d.type, val: d.val })) { form.reset(); setCtype("pct"); } // the store checks the code, the type and the value
   };
   return (
     <Allow sec="coupons">
       <Title sub="Discount codes customers can enter at checkout.">Coupons</Title>
       <form className="panel row" style={{ marginBottom: 20, alignItems: "end" }} onSubmit={submit}>
-        <Field label="Code"><Input name="code" required style={{ textTransform: "uppercase" }} /></Field>
-        <Field label="Type"><Select name="type"><option value="pct">Percent off</option><option value="fix">Fixed RWF off</option></Select></Field>
-        <Field label="Value"><Input name="val" type="number" min="1" required /></Field>
+        <Field label="Code"><Input name="code" required maxLength={20} pattern="[A-Za-z0-9_\-]{3,20}" title="3 to 20 letters or numbers, no spaces" autoComplete="off" style={{ textTransform: "uppercase" }} /></Field>
+        <Field label="Type"><Select name="type" value={ctype} onChange={(e) => setCtype(e.target.value)}><option value="pct">Percent off</option><option value="fix">Fixed RWF off</option></Select></Field>
+        <Field label={ctype === "pct" ? "Value (1 to 100 %)" : "Value (RWF)"}><Input name="val" type="number" inputMode="numeric" min="1" max={ctype === "pct" ? 100 : 10000000} step="1" required /></Field>
         <Button>Create coupon</Button>
       </form>
       {coupons.length ? (
@@ -849,19 +922,26 @@ export function Shipping() {
   const { zones, saveZones } = useStore();
   const [rows, setRows] = useState(zones);
   const edit = (i, k, v) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  const addZone = () => {
+    if (rows.length >= 10) return;
+    let n = rows.length + 1;
+    while (rows.some((r) => clean(r.name).toLowerCase() === `new zone ${n}`)) n++;
+    setRows([...rows, { name: `New zone ${n}`, fee: 0 }]);
+  };
   return (
     <Allow sec="shipping">
       <Title sub="One flat fee per order. Changes show on the store straight away.">Shipping zones</Title>
-      <form className="panel stack" style={{ maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); saveZones(rows.map((r) => ({ name: r.name, fee: +r.fee || 0 }))); }}>
+      <form className="panel stack" style={{ maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); saveZones(rows); }}>
         {rows.map((z, i) => (
           <div className="two" key={i}>
-            <Field label="Zone name"><Input required value={z.name} onChange={(e) => edit(i, "name", e.target.value)} /></Field>
-            <Field label="Fee (RWF)"><Input type="number" min="0" required value={z.fee} onChange={(e) => edit(i, "fee", e.target.value)} /></Field>
+            <Field label="Zone name"><Input required maxLength={40} value={z.name} onChange={(e) => edit(i, "name", e.target.value)} /></Field>
+            <Field label="Fee (RWF)"><Input type="number" inputMode="numeric" min="0" max="1000000" step="1" required value={z.fee} onChange={(e) => edit(i, "fee", e.target.value)} /></Field>
+            {rows.length > 1 && <div><Button type="button" variant="o" size="s" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove {clean(z.name) || "zone"}</Button></div>}
           </div>
         ))}
         <div className="row">
           <Button>Save shipping</Button>
-          <Button type="button" variant="o" onClick={() => setRows([...rows, { name: "New zone", fee: 0 }])}>Add zone</Button>
+          <Button type="button" variant="o" onClick={addZone} disabled={rows.length >= 10}>Add zone</Button>
         </div>
       </form>
     </Allow>
@@ -869,19 +949,19 @@ export function Shipping() {
 }
 
 export function Team() {
-  const { staff, addStaff, setRole, toggleStaff } = useStore();
+  const { staff, addStaff, setRole, toggleStaff, ask } = useStore();
   const pg = usePaged(staff, PAGE_SIZE.team);
   const submit = (e) => {
     e.preventDefault();
     const form = e.currentTarget, d = Object.fromEntries(new FormData(form));
-    if (addStaff({ name: d.name, email: d.email.toLowerCase(), role: d.role, active: true })) form.reset();
+    if (addStaff({ name: d.name, email: d.email, role: d.role })) form.reset(); // the store trims and checks everything
   };
   return (
     <Allow sec="team">
       <Title sub="Who can sign in to this admin area and what they can open.">Team and roles</Title>
       <form className="panel row" style={{ marginBottom: 20, alignItems: "end" }} onSubmit={submit}>
-        <Field label="Name"><Input name="name" required /></Field>
-        <Field label="Email"><Input name="email" type="email" required /></Field>
+        <Field label="Name"><Input name="name" required maxLength={60} autoComplete="off" /></Field>
+        <Field label="Email"><Input name="email" type="email" inputMode="email" required maxLength={120} autoComplete="off" /></Field>
         <Field label="Role"><Select name="role"><option>Staff</option><option>Manager</option><option>Admin</option></Select></Field>
         <Button>Add member</Button>
       </form>
@@ -891,7 +971,7 @@ export function Team() {
             <td>{m.name}</td><td>{m.email}</td>
             <td><Select style={{ height: 36, width: "auto" }} value={m.role} onChange={(e) => setRole(i, e.target.value)}><option>Admin</option><option>Manager</option><option>Staff</option></Select></td>
             <td><Badge soft>{m.active ? "Active" : "Off"}</Badge></td>
-            <td><Button variant="o" size="s" onClick={() => toggleStaff(i)}>{m.active ? "Turn off" : "Turn on"}</Button></td>
+            <td><Button variant="o" size="s" onClick={() => (m.active ? ask(`Turn off ${m.name}? They will not be able to sign in.`, () => toggleStaff(i), { yes: "Yes, turn off" }) : toggleStaff(i))}>{m.active ? "Turn off" : "Turn on"}</Button></td>
           </tr>
         ); })}
       </Table>
@@ -955,15 +1035,16 @@ export function Payments() {
         {[["mtn", "MTN Mobile Money"], ["airtel", "Airtel Money"]].map(([net, label]) => (
           <Panel className="stack" key={net}>
             <h2 className="h3">{label}</h2>
-            <Field label="Merchant code"><Input required value={c[net].code} onChange={(e) => set(net, "code", e.target.value)} /></Field>
-            <Field label="USSD to dial (use {code} and {amount})"><Input required value={c[net].tpl} onChange={(e) => set(net, "tpl", e.target.value)} /></Field>
+            <Field label="Merchant code"><Input required inputMode="numeric" pattern="\d{3,12}" title="3 to 12 digits" maxLength={12} value={c[net].code} onChange={(e) => set(net, "code", e.target.value)} /></Field>
+            <Field label="USSD to dial (use {code} and {amount})"><Input required maxLength={40} pattern="\*(?:[0-9*]|\{code\}|\{amount\})+#" title="Starts with * and ends with #, for example *182*8*1*{code}#" value={c[net].tpl} onChange={(e) => set(net, "tpl", e.target.value)} /></Field>
             <p className="sm mute">Customers will dial: <b className="ussd">{ussd(c[net].tpl, c[net].code, 10000)}</b> (example for RWF 10,000). Confirm the exact code with {net === "mtn" ? "MTN" : "Airtel"} before going live.</p>
           </Panel>
         ))}
         <Button>Save payment settings</Button>
       </form>
       <Panel className="sm" style={{ marginTop: 20, maxWidth: 620 }}>
-        <b style={{ fontWeight: 500 }}>Card payments (Stripe)</b>
+        <b style={{ fontWeight: 500 }}>Card payments (Stripe) <span className={`pill ${cardEnabled() ? "good" : "off"}`}>{cardEnabled() ? "On" : "Off"}</span></b>
+        {!cardEnabled() && <p className="mute">Card payments are switched off, so customers see Card as "Coming soon" and cannot choose it. The card form is built and ready. To open card payments, add VITE_CARD_ENABLED=true (and your Stripe key) to the .env file and restart.</p>}
         <p className="mute">{stripeOn ? "A Stripe publishable key is set. Customers see the real Stripe card field." : "No Stripe key is set yet, so checkout shows a preview card form. Add VITE_STRIPE_PUBLISHABLE_KEY to a .env file and restart to use the real Stripe field."}</p>
       </Panel>
     </Allow>

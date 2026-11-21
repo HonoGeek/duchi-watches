@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useStore } from "./store";
 import { Button, Field, Input } from "./ui";
 import { Avatar, Card, PageHead } from "./AdminShell";
-import { readImage, tm } from "./lib";
+import { MAX_IMAGE, readImage, tm } from "./lib";
 
 const strength = (p) => {
   let s = 0;
@@ -30,6 +30,7 @@ export default function AdminSettings() {
     e.target.value = "";
     if (!fl) return;
     if (!fl.type.startsWith("image/")) { showToast("Please choose an image file"); return; }
+    if (fl.size > MAX_IMAGE) { showToast("That photo is too large. Please choose one under 15 MB."); return; }
     try { setF((x) => ({ ...x, avatar: "" })); const a = await readImage(fl, 256, 0.85); setF((x) => ({ ...x, avatar: a })); }
     catch { showToast("Could not read that photo. Try a JPG or PNG."); }
   };
@@ -69,10 +70,10 @@ export default function AdminSettings() {
             </div>
           </div>
           <div className="two">
-            <Field label="Full name"><Input required value={f.name} onChange={set("name")} autoComplete="name" /></Field>
-            <Field label="Phone (optional)"><Input type="tel" value={f.phone} onChange={set("phone")} placeholder="07XX XXX XXX" autoComplete="tel" /></Field>
+            <Field label="Full name"><Input required maxLength={60} value={f.name} onChange={set("name")} autoComplete="name" /></Field>
+            <Field label="Phone (optional)"><Input type="tel" inputMode="tel" maxLength={20} value={f.phone} onChange={set("phone")} placeholder="07XX XXX XXX" autoComplete="tel" /></Field>
           </div>
-          <Field label="Email (you sign in with this)"><Input required type="email" value={f.email} onChange={set("email")} autoComplete="email" /></Field>
+          <Field label="Email (you sign in with this)"><Input required type="email" inputMode="email" maxLength={120} value={f.email} onChange={set("email")} autoComplete="email" /></Field>
           <div className="sx-meta">
             <span>Role <b className="pill off">{adm.role}</b></span>
             {lastIn && <span className="mute sm">Previous sign in: {tm(lastIn.t)}</span>}

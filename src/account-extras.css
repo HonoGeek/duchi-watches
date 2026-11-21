@@ -27,3 +27,16 @@
   .ax .stats.s4 .ac-money{font-size:17px;padding:6px 0 4px;white-space:normal}
 }
 @media(max-width:340px){.ax .stats.s4{grid-template-columns:minmax(0,1fr)}}
+
+/* order actions: payment retry, cancellation and return requests */
+.ac-act{display:grid;gap:10px}
+.ac-note{margin:0;font-size:14px;color:var(--mute);line-height:1.5;max-width:none}
+.ac-note.bad{color:#d93025}
+[data-theme="dark"] .ac-note.bad{color:#ff7b72}
+.ac-act form{margin-top:4px}
+
+/* order lines on very narrow phones: the price drops under the name instead of pushing the page wider */
+@media(max-width:380px){
+  .ax-content .line{grid-template-columns:72px minmax(0,1fr)!important}
+  .ax-content .line>.price{grid-column:2!important;justify-self:start}
+}

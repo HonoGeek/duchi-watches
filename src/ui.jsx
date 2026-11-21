@@ -1,6 +1,7 @@
 import { Children, cloneElement, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { photo, fmt } from "./lib";
+import { photo, fmt, isEmail } from "./lib";
+import "./forms.css";
 import { useStore } from "./store";
 
 /* ---------- reusable building blocks ---------- */
@@ -13,7 +14,10 @@ export function Button({ variant = "p", size, block, to, href, className = "", c
   if (href) return <a href={href} className={c} {...rest}>{children}</a>;
   return to ? <Link to={to} className={c} {...rest}>{children}</Link> : <button className={c} {...rest}>{children}</button>;
 }
-export const Field = ({ label, children }) => <label className="f">{label}{children}</label>;
+// error: a message shown in red under the control (the page also sets aria-invalid on the control). hint: small help text.
+export const Field = ({ label, error, hint, children }) => (
+  <label className="f">{label}{children}{hint && !error && <span className="fhelp">{hint}</span>}{error && <span className="ferr" role="alert">{error}</span>}</label>
+);
 export const Input = ({ className = "", ...p }) => <input className={`input ${className}`.trim()} {...p} />;
 export const Select = ({ children, className = "", ...p }) => <select className={`input ${className}`.trim()} {...p}>{children}</select>;
 export const Textarea = (p) => <textarea className="input" {...p} />;
@@ -29,12 +33,13 @@ export const Table = ({ head, children }) => (
   <div className="tw"><table className="tbl"><thead><tr>{head.map((h, i) => <th key={i}>{h}</th>)}</tr></thead><tbody>{Children.map(children, (tr) => tr && cloneElement(tr, {}, Children.map(tr.props.children, (td, i) => td && cloneElement(td, { "data-label": head[i] || "" }))))}</tbody></table></div>
 );
 
-export function Qty({ value, onMinus, onPlus }) {
+// max: the most that can be added (the stock). The + button switches off there, and the − button at 1.
+export function Qty({ value, onMinus, onPlus, max }) {
   return (
     <div className="qty">
-      <button type="button" onClick={onMinus} aria-label="Less">−</button>
+      <button type="button" onClick={onMinus} aria-label="Less" disabled={value <= 1}>−</button>
       <span>{value}</span>
-      <button type="button" onClick={onPlus} aria-label="More">+</button>
+      <button type="button" onClick={onPlus} aria-label="More" disabled={max != null && value >= max}>+</button>
     </div>
   );
 }
@@ -211,7 +216,6 @@ export function ProductCard({ p, view = "grid" }) {
   );
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Newsletter sign-up. Validates the address, rejects duplicates and confirms in words.
 // Addresses are saved by the store (see addSubscriber) and listed in Admin > Email list.
@@ -224,7 +228,7 @@ export function Newsletter() {
     e.preventDefault();
     const v = email.trim().toLowerCase();
     if (!v) return fail("Enter your email address.");
-    if (!EMAIL_RE.test(v)) return fail("That email address does not look right. Check it and try again.");
+    if (!isEmail(v)) return fail("That email address does not look right. Check it and try again.");
     const again = addSubscriber(v) === "exists";
     setSt({ kind: "done", msg: again ? "You are already on the list. Thank you!" : "You are on the list. Thank you!" });
     showToast(again ? "You are already on the list" : "You are on the list. Thank you!");

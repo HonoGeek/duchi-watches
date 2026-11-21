@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useStore } from "./store";
 import { Icon, useMenu } from "./ui";
 import { AIcon, Avatar, ThemeBtn, useOutside } from "./AdminShell";
+import NotifBell from "./NotifBell";
 
 /* The customer dashboard. It has its own layout (menu on the left, top bar above the page) instead of sitting
    inside the shop's header and footer, and shares its look with the admin area. */
@@ -99,6 +100,7 @@ export default function AccountShell() {
           <div className="ax-tools">
             <Link className="ax-view" to="/">{AIcon.store}<span>Back to store</span></Link>
             <Link className="ax-btn" to="/cart" aria-label={`Cart${cartCount ? `, ${cartCount} items` : ""}`}>{AIcon.bag}{cartCount > 0 && <b className="ax-dot">{cartCount}</b>}</Link>
+            <NotifBell />
             <ThemeBtn />
             <Menu />
           </div>

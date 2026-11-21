@@ -74,7 +74,11 @@ export const CATS = ["Steel", "Leather", "Chronograph"];
 // Categories are managed in Admin > Categories. img is the cover photo shown on the Home page tile (optional).
 export const SEED_CATS = [{ name: "Steel", img: IM[1] }, { name: "Leather", img: IM[4] }, { name: "Chronograph", img: IM[0] }];
 export const ST = ["Processing", "Dispatched", "Delivered", "Cancelled"];
-export const PAYS = ["MTN Mobile Money", "Airtel Money", "Card", "Bank transfer"];
+export const PAYS = ["MTN Mobile Money", "Airtel Money", "Card", "Bank transfer"]; // every method the system knows
+// Card payments are switched off for now: the card form and the order code are still in place.
+// To bring card back, put VITE_CARD_ENABLED=true in the .env file (with the Stripe key) and restart.
+export const cardEnabled = () => import.meta.env?.VITE_CARD_ENABLED === "true";
+export const livePays = () => PAYS.filter((m) => m !== "Card" || cardEnabled()); // the methods a customer can use right now
 export const DEMO_ADMIN_PASSWORD = "admin123";
 export const PAY_STATUS = ["Pending", "Paid", "Failed"];
 // Mobile-money merchant codes. Confirm the exact USSD strings with MTN / Airtel and edit them in Admin > Payments.
@@ -83,8 +87,8 @@ export const SEED_PAYCFG = {
   airtel: { code: "000000", tpl: "*500#" },
 };
 export const PERM = {
-  Admin: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "coupons", "shipping", "payments", "team", "audit", "settings"],
-  Manager: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "coupons", "shipping", "audit", "settings"],
+  Admin: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "policies", "coupons", "shipping", "payments", "team", "audit", "settings"],
+  Manager: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "policies", "coupons", "shipping", "audit", "settings"],
   Staff: ["", "orders", "products", "settings"],
 };
 
@@ -107,3 +111,16 @@ export const SEED_REVIEWS = REVIEWS.map((r, i) => ({
   id: "s" + i, key: "seed" + i, pid: r.pid, email: "", n: r.n, r: r.r, t: r.t, img: r.img || "",
   date: new Date(Date.now() - r.ago * 864e5).toISOString(), verified: true, status: "published", sample: true,
 }));
+
+// The shop's details, printed on receipts. Replace them with your own.
+export const SHOP = { name: "DUCHI STORE", place: "Kigali, Rwanda", email: "hello@duchistore.rw", phone: "+250 000 000 000" };
+
+// Policies are written by the shop owner in Admin > Policies, one paragraph per line. A policy that is empty shows
+// "being finalised" on the Help page, so the shop never states a rule nobody wrote.
+// returnDays is how many days after delivery a customer can ask to return a watch online (0 = not open yet).
+export const POLICY_KEYS = [["delivery", "Delivery"], ["returns", "Returns and exchanges"], ["warranty", "Warranty"], ["tracking", "Order tracking"], ["terms", "Terms of sale"], ["privacy", "Privacy policy"]];
+export const DEFAULT_POLICIES = {
+  delivery: [], returns: [], warranty: [], terms: [], privacy: [], returnDays: 0,
+  tracking: ["To track your order, sign in to your DUCHI account and open My orders. You will see the status of each order there. You need to be signed in to view it."],
+};
+export const RETURN_REASONS = ["The watch has a fault", "Damaged when it arrived", "Not what I ordered", "Not as described", "I changed my mind"];

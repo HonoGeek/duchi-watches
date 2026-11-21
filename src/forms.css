@@ -1,0 +1,8 @@
+/* ===== Form validation: messages under fields and red outlines on invalid inputs ===== */
+.ferr{display:block;font-size:12px;line-height:1.4;color:#d93025}
+[data-theme="dark"] .ferr{color:#ff7b72}
+.input[aria-invalid="true"],.input:user-invalid{border-color:#d93025}
+.input[aria-invalid="true"]:focus,.input:user-invalid:focus{box-shadow:0 0 0 4px rgba(217,48,37,.18)}
+.fchk[aria-invalid="true"] span{color:#d93025}
+.fhelp{font-size:12px;color:var(--mute)}
+.qty button:disabled{opacity:.35;cursor:not-allowed}

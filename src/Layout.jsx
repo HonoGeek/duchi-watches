@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import NotifBell from "./NotifBell";
 import { Link, NavLink } from "react-router-dom";
 import { useStore } from "./store";
 import { Icon, Button, MenuButton, useMenu } from "./ui";
@@ -10,7 +11,7 @@ export function Topbar() {
 }
 
 export function Header() {
-  const { theme, setTheme, cartCount } = useStore();
+  const { theme, setTheme, cartCount, user } = useStore();
   const [open, setOpen] = useMenu();
   const [sc, setSc] = useState(false);
   useEffect(() => {
@@ -36,6 +37,7 @@ export function Header() {
         </nav>
         <div className="row" style={{ gap: 2 }}>
           <button className="ib" onClick={setTheme} aria-label="Switch light or dark mode">{theme === "dark" ? Icon.sun : Icon.moon}</button>
+          {user && <NotifBell variant="shop" />}
           <Link className="ib" to="/account" aria-label="Account">{Icon.user}</Link>
           <Link className="ib" to="/cart" aria-label="Cart">{Icon.bag}<span className="cnt" key={cartCount}>{cartCount}</span></Link>
         </div>
@@ -70,18 +72,26 @@ export function Footer() {
 
 export function Toast() {
   const { toast, hideToast } = useStore();
+  const ask = toast?.type === "ask";
+  useEffect(() => { // Escape answers "No" to a question
+    if (!ask) return undefined;
+    const key = (e) => { if (e.key === "Escape") hideToast(); };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [ask]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className={`toast${toast ? " show" : ""}${toast?.type === "err" ? " err" : ""}`} role="status" aria-live="polite">
+    <div className={`toast${toast ? " show" : ""}${toast?.type === "err" ? " err" : ""}${ask ? " ask" : ""}`} role={ask ? "alertdialog" : "status"} aria-live={ask ? "assertive" : "polite"}>
       {toast && <>
         <i className="tic" aria-hidden="true">
-          {toast.type === "err"
+          {toast.type === "err" || ask
             ? <svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.01" /><circle cx="12" cy="12" r="9" /></svg>
             : <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" /></svg>}
         </i>
         <span>{toast.msg}</span>
         {toast.to && <Button to={toast.to} variant="g" size="s">{toast.label || "View"}</Button>}
-        {toast.action && <Button type="button" variant="g" size="s" onClick={toast.action}>{toast.label || "Undo"}</Button>}
-        <button type="button" className="tx" onClick={hideToast} aria-label="Dismiss message"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg></button>
+        {ask && <button type="button" className="tno" onClick={hideToast}>{toast.no || "No"}</button>}
+        {toast.action && <Button type="button" variant="g" size="s" onClick={toast.action} autoFocus={ask}>{toast.label || "Undo"}</Button>}
+        {!ask && <button type="button" className="tx" onClick={hideToast} aria-label="Dismiss message"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg></button>}
       </>}
     </div>
   );

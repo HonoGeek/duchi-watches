@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useStore } from "./store";
 import { Img, Button, Field, Icon, Input, Select, Textarea } from "./ui";
 import { BADGES, DESC_MAX, IM, MAX_HIGHLIGHTS, MAX_PHOTOS, SPEC_FIELDS } from "./data";
-import { dtm, fmt, readImage, storageUsed, STORAGE_LIMIT } from "./lib";
+import { clean, dtm, fmt, intIn, readImage, storageUsed, MAX_IMAGE, STORAGE_LIMIT } from "./lib";
 
 const emptySpec = () => Object.fromEntries(SPEC_FIELDS.map(([k]) => [k, ""]));
 const dataLen = (list) => list.reduce((a, m) => a + (String(m).startsWith("data:") ? m.length : 0), 0);
@@ -15,7 +15,7 @@ const Row = ({ label, hint, children }) => (
 );
 
 export default function ProductForm({ p, onDone }) {
-  const { products, cats, saveProduct, showToast } = useStore();
+  const { products, cats, saveProduct, showToast, ask } = useStore();
   const isNew = !p;
   const init = useMemo(() => ({
     n: p?.n || "", s: p?.s || "", c: p?.c || cats[0]?.name || "", tag: p?.tag || "",
@@ -56,7 +56,7 @@ export default function ProductForm({ p, onDone }) {
     setBusy(take.length); setErr("");
     const out = [];
     for (const file of take) {
-      if (file.size > 20e6) showToast(`${file.name} is too large (20 MB at most)`);
+      if (file.size > MAX_IMAGE) showToast(`${file.name} is too large (15 MB at most)`);
       else { try { out.push(await readImage(file)); } catch { showToast(`Could not read ${file.name}. Try a JPG or PNG.`); } }
       setBusy((b) => b - 1);
     }
@@ -90,24 +90,25 @@ export default function ProductForm({ p, onDone }) {
   const rmHl = (i) => setF((x) => ({ ...x, highlights: x.highlights.filter((_, k) => k !== i) }));
 
   const stepStock = (d) => setF((x) => ({ ...x, stock: String(Math.max(0, (parseInt(x.stock, 10) || 0) + d)) }));
-  const cancel = () => { if (dirty && !window.confirm("Discard your changes?")) return; onDone(); };
+  const cancel = () => { if (dirty) ask("Discard your changes?", onDone, { yes: "Yes, discard", no: "Keep editing" }); else onDone(); };
 
   const submit = (e) => {
     e.preventDefault();
-    const price = Number(f.p), stock = Math.floor(Number(f.stock));
+    const price = intIn(f.p, 1, 100000000), stock = intIn(f.stock, 0, 100000);
     const fail = (m, id) => { setErr(m); document.getElementById(id || "pf-err")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
-    if (!f.n.trim() || !f.s.trim()) return fail("Add a name and a dial or colour.", "pf-basics");
+    if (clean(f.n).length < 2 || !clean(f.s)) return fail("Add a name (at least 2 characters) and a dial or colour.", "pf-basics");
+    if (products.some((x) => x.id !== p?.id && clean(x.n).toLowerCase() === clean(f.n).toLowerCase())) return fail(`A product called "${clean(f.n)}" already exists. Use a different name.`, "pf-basics");
     if (!f.c) return fail("Choose a category. Add one in Categories first if the list is empty.", "pf-basics");
-    if (!(price > 0)) return fail("Add a price above 0.", "pf-price");
-    if (!(stock >= 0)) return fail("Stock cannot be negative.", "pf-price");
+    if (price == null) return fail("The price must be a whole number of RWF above 0, for example 95000.", "pf-price");
+    if (stock == null) return fail("Stock must be a whole number from 0 to 100,000.", "pf-price");
     if (!f.im.length) return fail("Add at least one photo.", "pf-photos");
     if (projected > STORAGE_LIMIT * 0.97) return fail("These photos are too big for the browser storage. Remove a photo or use image links.", "pf-photos");
-    saveProduct({
-      id: isNew ? products.length : p.id, n: f.n.trim(), s: f.s.trim(), c: f.c, p: price, stock, tag: f.tag.trim(), active: f.active,
-      im: f.im, desc: f.desc.trim(), highlights: f.highlights.map((h) => h.trim()).filter(Boolean), box: f.box.trim(),
-      spec: Object.fromEntries(SPEC_FIELDS.map(([k]) => [k, (f.spec[k] || "").trim()])),
+    const saved = saveProduct({
+      id: isNew ? products.length : p.id, n: clean(f.n), s: clean(f.s), c: f.c, p: price, stock, tag: clean(f.tag), active: f.active,
+      im: f.im, desc: f.desc.trim(), highlights: f.highlights.map(clean).filter(Boolean), box: clean(f.box),
+      spec: Object.fromEntries(SPEC_FIELDS.map(([k]) => [k, clean(f.spec[k])])),
     });
-    onDone();
+    if (saved) onDone(); // when the store refuses, it shows the reason and the form stays open
   };
 
   return (
@@ -129,8 +130,8 @@ export default function ProductForm({ p, onDone }) {
         <div className="pf-h"><h2>Basics</h2><p>What shoppers see first.</p></div>
         <div className="pf-b">
           <div className="two">
-            <Field label="Name"><Input required value={f.n} onChange={set("n")} placeholder="e.g. Axis Day-Date" /></Field>
-            <Field label="Dial or colour"><Input required value={f.s} onChange={set("s")} placeholder="e.g. Teal dial" /></Field>
+            <Field label="Name"><Input required maxLength={60} value={f.n} onChange={set("n")} placeholder="e.g. Axis Day-Date" /></Field>
+            <Field label="Dial or colour"><Input required maxLength={40} value={f.s} onChange={set("s")} placeholder="e.g. Teal dial" /></Field>
           </div>
           <div className="two">
             <Row label="Category" hint={<Link to="/admin/categories">Manage categories</Link>}>
@@ -152,12 +153,12 @@ export default function ProductForm({ p, onDone }) {
         <div className="pf-h"><h2>Price and stock</h2><p>Stock goes down automatically when an order is placed.</p></div>
         <div className="pf-b two">
           <Row label="Price" hint={Number(f.p) > 0 ? fmt(f.p) : "In Rwandan francs"}>
-            <div className="inpre"><span>RWF</span><Input type="number" min="1" step="1" required inputMode="numeric" value={f.p} onChange={set("p")} aria-label="Price in RWF" /></div>
+            <div className="inpre"><span>RWF</span><Input type="number" min="1" max="100000000" step="1" required inputMode="numeric" value={f.p} onChange={set("p")} aria-label="Price in RWF" /></div>
           </Row>
           <Row label="Stock" hint={Number(f.stock) === 0 ? "Shown as sold out" : Number(f.stock) <= 5 ? "Shown as low stock" : "In stock"}>
             <div className="nstep">
               <button type="button" onClick={() => stepStock(-1)} aria-label="Less stock">−</button>
-              <Input type="number" min="0" step="1" required inputMode="numeric" value={f.stock} onChange={set("stock")} aria-label="Stock" />
+              <Input type="number" min="0" max="100000" step="1" required inputMode="numeric" value={f.stock} onChange={set("stock")} aria-label="Stock" />
               <button type="button" onClick={() => stepStock(1)} aria-label="More stock">+</button>
             </div>
           </Row>
@@ -233,7 +234,7 @@ export default function ProductForm({ p, onDone }) {
             ))}
             {f.highlights.length < MAX_HIGHLIGHTS && <button type="button" className="lnk pf-add" onClick={addHl}>+ Add a highlight</button>}
           </div>
-          <Field label="What is in the box"><Input value={f.box} onChange={set("box")} placeholder="e.g. Watch, gift box, warranty card" /></Field>
+          <Field label="What is in the box"><Input maxLength={120} value={f.box} onChange={set("box")} placeholder="e.g. Watch, gift box, warranty card" /></Field>
         </div>
       </section>
 
@@ -241,7 +242,7 @@ export default function ProductForm({ p, onDone }) {
         <div className="pf-h"><h2>Specification</h2><p>Only the rows you fill in are shown.</p></div>
         <div className="pf-b two">
           {SPEC_FIELDS.map(([k, l, hint]) => (
-            <Field key={k} label={l}><Input value={f.spec[k] || ""} placeholder={hint} onChange={(e) => setF((x) => ({ ...x, spec: { ...x.spec, [k]: e.target.value } }))} /></Field>
+            <Field key={k} label={l}><Input maxLength={40} value={f.spec[k] || ""} placeholder={hint} onChange={(e) => setF((x) => ({ ...x, spec: { ...x.spec, [k]: e.target.value } }))} /></Field>
           ))}
         </div>
       </section>

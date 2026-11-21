@@ -4,7 +4,7 @@ import { fmt } from "./lib";
 import { ussd, telHref } from "./pay";
 
 // Shows the merchant code, a button that opens the phone dialer with the USSD code, and optional proof fields.
-export default function MomoPanel({ net, amount, tx, pp, setTx, setPp }) {
+export default function MomoPanel({ net, amount, tx, pp, setTx, setPp, errTx, errPp, again }) {
   const { payCfg, showToast } = useStore();
   const cfg = payCfg[net];
   const label = net === "mtn" ? "MTN Mobile Money" : "Airtel Money";
@@ -24,11 +24,11 @@ export default function MomoPanel({ net, amount, tx, pp, setTx, setPp }) {
       <ol className="sm mute steps2">
         <li>Tap the button. Your phone opens the dialer with the code filled in.</li>
         <li>Press call, then confirm the amount and enter your PIN.</li>
-        <li>Come back here and place your order. We confirm your payment before dispatch.</li>
+        <li>{again ? "Come back here and save your payment details below. We confirm your payment before dispatch." : "Come back here and place your order. We confirm your payment before dispatch."}</li>
       </ol>
       <p className="sm mute">On a computer? Dial {code} on your phone.</p>
-      <Field label="Number you paid from (optional)"><Input type="tel" value={pp} onChange={(e) => setPp(e.target.value)} placeholder="07XX XXX XXX" /></Field>
-      <Field label="Transaction ID from the SMS (optional)"><Input value={tx} onChange={(e) => setTx(e.target.value)} placeholder="e.g. 1234567890" /></Field>
+      <Field label="Number you paid from" error={errPp} hint="The phone number you used to send the money."><Input type="tel" inputMode="tel" maxLength={20} required autoComplete="tel" value={pp} onChange={(e) => setPp(e.target.value)} placeholder="07XX XXX XXX" aria-invalid={!!errPp} /></Field>
+      <Field label="Transaction ID from the SMS (optional)" error={errTx}><Input maxLength={40} autoComplete="off" value={tx} onChange={(e) => setTx(e.target.value)} placeholder="e.g. 1234567890" aria-invalid={!!errTx} /></Field>
     </div>
   );
 }

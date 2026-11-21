@@ -9,7 +9,7 @@ const PAGE = 5; // reviews per page
 
 // The reviews of one product, with the rating summary and (for people who received it) the "write a review" button.
 export default function ProductReviews({ p }) {
-  const { reviews, published, user, eligible, allOrders, deleteReview } = useStore();
+  const { reviews, published, user, eligible, allOrders, deleteReview, ask } = useStore();
   const [sort, setSort] = useState("new");
   const [dlg, setDlg] = useState(null);
 
@@ -66,7 +66,7 @@ export default function ProductReviews({ p }) {
                   {user && r.email === user.email && (
                     <span className="rrow-own">
                       <button type="button" className="lnk" onClick={() => setDlg({ existing: r })}>Edit</button>
-                      <button type="button" className="lnk mute" onClick={() => { if (window.confirm("Delete your review?")) deleteReview(r.id); }}>Delete</button>
+                      <button type="button" className="lnk mute" onClick={() => ask("Delete your review?", () => deleteReview(r.id), { yes: "Yes, delete" })}>Delete</button>
                     </span>
                   )}
                 </div>
