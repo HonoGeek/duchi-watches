@@ -16,7 +16,7 @@ export default function Receipt() {
   const back = mine ? `/account/orders/${o.id}` : `/admin/orders/${o.id}`;
   const paid = (o.payStatus || "Pending") === "Paid";
   const state = o.status === "Cancelled" ? ["cancelled", "CANCELLED"] : paid ? ["paid", "PAID"] : ["pending", "PAYMENT PENDING"];
-  const refund = o.returnReq?.refund;
+  const refund = o.refund || o.returnReq?.refund;
   return (
     <div className="rp-wrap">
       <div className="rp-bar no-print">

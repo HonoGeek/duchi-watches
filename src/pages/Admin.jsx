@@ -4,7 +4,8 @@ import { useStore } from "../store";
 import { Img, Button, Badge, Field, Input, Pager, Panel, Select, Chip, Stars, Table, Textarea, usePaged } from "../ui";
 import { IM, PAY_STATUS, PERM, POLICY_KEYS, ST, cardEnabled } from "../data";
 import { ussd, waLink, smsLink, orderMessage } from "../pay";
-import RequestsPanel from "../AdminRequests";
+import { OrderBody, OrderDrawer, PaySelect, PayPill, StatusSelect } from "../AdminOrderView";
+import { hasReq, openItems, refundOf } from "../orderState";
 import { clean, fmt, dt, dtm, tm, ls, sv, readImage, byNewest, MAX_IMAGE } from "../lib";
 import ProductForm from "../ProductForm";
 import DateRange, { ymd } from "../DateRange";
@@ -19,35 +20,9 @@ const PAGE_SIZE = { orders: 8, products: 8, coupons: 8, team: 8, audit: 10, revi
 const None = ({ text }) => <Panel><p className="mute">{text}</p></Panel>;
 // Every admin page starts with the same header: a title, an optional line of help text and optional buttons.
 const Title = ({ children, sub, actions }) => <PageHead title={children} sub={sub} actions={actions} />;
-const PayPill = ({ s }) => <span className={`pill ${s === "Paid" ? "good" : s === "Failed" ? "bad" : "warn"}`}>{s}</span>;
 const Chev = ({ up }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={up ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} /></svg>
 );
-const StatusSelect = ({ o }) => {
-  const { setOrderStatus, ask } = useStore();
-  return (
-    <Select style={{ height: 36, width: "auto" }} value={o.status} aria-label="Order status"
-      onChange={(e) => {
-        const v = e.target.value;
-        if (v === "Cancelled") { // asks in a toast first; the list keeps the old status until the answer is Yes
-          ask(`Cancel order ${o.id}? The watches go back into stock and the customer is told it was cancelled.`, () => setOrderStatus(o.id, v), { yes: "Yes, cancel order", no: "No, keep it" });
-          return;
-        }
-        setOrderStatus(o.id, v);
-      }}>
-      {ST.map((s) => <option key={s}>{s}</option>)}
-    </Select>
-  );
-};
-
-const PaySelect = ({ o }) => {
-  const { setPayStatus } = useStore();
-  return (
-    <Select style={{ height: 36, width: "auto" }} value={o.payStatus || "Pending"} onChange={(e) => setPayStatus(o.id, e.target.value)} aria-label="Payment status">
-      {PAY_STATUS.map((s) => <option key={s}>{s}</option>)}
-    </Select>
-  );
-};
 
 function AdminLogin() {
   const { adminSignIn } = useStore();
@@ -91,22 +66,32 @@ function Allow({ sec, children }) {
   return PERM[adm.role].includes(sec) ? children : <None text="Your role does not have access to this page." />;
 }
 
-function OrdersTable({ list, empty = "No orders yet." }) {
+// onOpen(id) opens the order in the side panel. Without it (the dashboard) the order opens on its own page.
+function OrdersTable({ list, empty = "No orders yet.", onOpen }) {
   if (!list.length) return <None text={empty} />;
+  const plain = (e) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey;
   return (
-    <Table head={["Order", "Customer", "Contact", "Date", "Total", "Payment", "Status"]}>
+    <Table head={["Order", "Customer", "Contact", "Date", "Total", "Payment", "Status", ""]}>
       {list.map((o) => (
-        <tr key={o.id}>
+        <tr key={o.id} className={onOpen ? "clickable" : undefined}
+          onClick={onOpen ? (e) => { if (!e.target.closest("a, button, select, input, label")) onOpen(o.id); } : undefined}>
           <td>
-            <Link to={`/admin/orders/${o.id}`}><b style={{ fontWeight: 500 }}>{o.id}</b></Link>
-            {o.cancelReq?.status === "pending" && <div style={{ marginTop: 4 }}><span className="pill warn">Cancel request</span></div>}
-            {o.returnReq?.status === "pending" && <div style={{ marginTop: 4 }}><span className="pill warn">Return request</span></div>}
+            <div className="ocell">
+              <Link to={`/admin/orders/${o.id}`} onClick={onOpen ? (e) => { if (plain(e)) { e.preventDefault(); onOpen(o.id); } } : undefined}><b style={{ fontWeight: 500 }}>{o.id}</b></Link>
+              {openItems(o).map((t) => <span key={t} className="pill warn">{t}</span>)}
+              {o.cancelledBy === "customer" && <span className="pill off">Cancelled by customer</span>}
+            </div>
           </td>
           <td>{o.name}</td>
           <td><div className="contact"><a href={`tel:${o.phone}`}>{o.phone}</a><a href={`mailto:${o.cEmail || o.email}`}>{o.cEmail || o.email}</a></div></td>
           <td className="nw">{dt(o.date)}</td><td className="nw">{fmt(o.total)}</td>
           <td><div><PayPill s={o.payStatus || "Pending"} /><div className="mute sm" style={{ marginTop: 4 }}>{o.pay}</div></div></td>
           <td><StatusSelect o={o} /></td>
+          <td>
+            {onOpen
+              ? <Button variant="o" size="s" onClick={() => onOpen(o.id)} aria-label={`View order ${o.id}`}><svg className="ov-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>View</Button>
+              : <Button variant="o" size="s" to={`/admin/orders/${o.id}`} aria-label={`View order ${o.id}`}>View</Button>}
+          </td>
         </tr>
       ))}
     </Table>
@@ -180,7 +165,7 @@ export function Dashboard() {
   const ok = allOrders.filter((o) => o.status !== "Cancelled"); // cancelled orders never count as sales
   const inP = ok.filter((o) => dayOf(o) >= from && dayOf(o) <= to);
   const inPrev = ok.filter((o) => dayOf(o) >= pFrom && dayOf(o) <= pTo);
-  const net = (o) => o.total - (o.returnReq?.refund?.amount || 0); // a refund recorded for a return comes off the revenue
+  const net = (o) => o.total - refundOf(o); // a refund recorded for a returned order comes off the revenue
   const sum = (l) => l.reduce((a, o) => a + net(o), 0);
   const rev = sum(inP), cnt = inP.length, aov = cnt ? Math.round(rev / cnt) : 0;
   const revP = sum(inPrev), cntP = inPrev.length, aovP = cntP ? Math.round(revP / cntP) : 0;
@@ -195,7 +180,7 @@ export function Dashboard() {
   const tiles = [
     [allOrders.filter((o) => o.status === "Processing").length, "Orders to process", "/admin/orders?status=Processing", "bag", "orders"],
     [unpaid.length, "Payments to confirm", "/admin/orders?pay=unpaid", "card", "orders"],
-    [allOrders.filter(hasReq).length, "Requests to answer", "/admin/orders?req=1", "mail", "orders"],
+    [allOrders.filter(hasReq).length, "Orders needing action", "/admin/orders?req=1", "mail", "orders"],
     [(messages || []).filter((m) => !m.read).length, "Unread messages", "/admin/messages", "mail", "messages"],
     [(reviews || []).filter((r) => r.status === "pending").length, "Reviews to approve", "/admin/reviews", "star", "reviews"],
     [low.length, "Low on stock", "/admin/products", "box", "products"],
@@ -232,6 +217,9 @@ export function Dashboard() {
   if (rows.length > 6) rows = [...rows.slice(0, 5), { label: "Other", v: rows.slice(5).reduce((a, r) => a + r.v, 0) }];
   rows = rows.map((r) => ({ ...r, text: money ? fmt(r.v) : String(r.v) }));
   const gTotal = rows.reduce((a, r) => a + r.v, 0);
+  // refunds recorded in this period (after a return or after a cancellation)
+  const refunds = allOrders.flatMap((o) => [o.refund, o.returnReq?.refund]).filter((r) => r && ymd(new Date(r.date)) >= from && ymd(new Date(r.date)) <= to);
+  const refunded = refunds.reduce((a, r) => a + r.amount, 0);
 
   const pickPreset = (k) => { setPreset(k); remember({ preset: k }); };
   const pickRange = (r) => { setCustom(r); setPreset(r.from ? "custom" : saved.preset || 30); };
@@ -258,6 +246,8 @@ export function Dashboard() {
       )}
 
       <div className="kpis">{kpis.map(([l, v, note]) => <Panel key={l} className="kpi"><div className="kl">{l}</div><div className="kv">{v}</div><div className="kn">{note}</div></Panel>)}</div>
+
+      {refunds.length > 0 && <p className="mute sm db-ref">Refunded in this period: <b style={{ fontWeight: 500 }}>{fmt(refunded)}</b> ({refunds.length} {refunds.length === 1 ? "refund" : "refunds"}). Refunds on returned orders are already taken off the revenue above; cancelled orders never count as revenue.</p>}
 
       <div className="dgrid">
         <Panel>
@@ -336,7 +326,6 @@ const ORDER_SORTS = [
   ["total", "Highest total", (a, b) => b.total - a.total || byDate(a, b)],
 ];
 const isPaid = (o) => (o.payStatus || "Pending") === "Paid";
-const hasReq = (o) => o.cancelReq?.status === "pending" || o.returnReq?.status === "pending"; // a customer is waiting for an answer
 
 // The key makes the page start fresh when it is opened from a dashboard tile (/admin/orders?status=Processing or ?pay=unpaid).
 export function AdminOrders() {
@@ -353,6 +342,7 @@ function OrdersPage() {
   const [q, setQ] = useState("");
   const [range, setRange] = useState({ from: "", to: "" });
   const [sort, setSort] = useState("action");
+  const [openId, setOpenId] = useState(null); // the order shown in the side panel
   const lo = range.from, hi = range.to || range.from; // only a start day means that one day
   const needle = q.trim().toLowerCase(), tight = needle.replace(/\s+/g, "");
   const days = {};
@@ -395,63 +385,33 @@ function OrdersPage() {
       </div>
       <div className="row ofilters" role="group" aria-label="Filter by status">
         {["All", ...ST].map((c) => <Chip key={c} on={c === f} aria-pressed={c === f} onClick={() => setF(c)}>{c}<span className="ocnt">{count(c)}</span></Chip>)}
-        {(reqCount > 0 || req) && <Chip on={req} aria-pressed={req} onClick={() => setReq(!req)}>Requests<span className="ocnt">{reqCount}</span></Chip>}
+        {(reqCount > 0 || req) && <Chip on={req} aria-pressed={req} onClick={() => setReq(!req)}>Needs action<span className="ocnt">{reqCount}</span></Chip>}
       </div>
-      <OrdersTable list={pg.items} empty={allOrders.length ? "No orders match your filters." : "No orders yet."} />
+      <OrdersTable list={pg.items} empty={allOrders.length ? "No orders match your filters." : "No orders yet."} onOpen={setOpenId} />
       <Pager {...pg} onPage={pg.setPage} noun="orders" />
+      {openId && <OrderDrawer id={openId} onClose={() => setOpenId(null)} />}
     </Allow>
   );
 }
 
 export function AdminOrderDetail() {
   const { id } = useParams();
-  const { allOrders, getProduct } = useStore();
+  const { allOrders } = useStore();
   const o = allOrders.find((x) => x.id === id);
   if (!o) return <None text="Order not found." />;
   return (
     <>
       <Title sub={`Placed ${tm(o.date)} by ${o.name}`} actions={<><Button to="/admin/orders" variant="o" size="s">Back to orders</Button><Button to={`/receipt/${o.id}`} variant="o" size="s">Receipt</Button><StatusSelect o={o} /></>}>Order {o.id}</Title>
-      <Panel style={{ marginBottom: 16 }}>
-        {o.items.map((x) => <div className="r row" style={{ justifyContent: "space-between", padding: "8px 0" }} key={x.id}><span>{x.n || getProduct(x.id)?.n || "Removed watch"} × {x.q}</span><span>{fmt(x.p * x.q)}</span></div>)}
-        <div className="sum">
-          <div className="r"><span>Subtotal</span><span>{fmt(o.sub)}</span></div>
-          {o.disc > 0 && <div className="r"><span>Discount {o.coupon}</span><span>−{fmt(o.disc)}</span></div>}
-          <div className="r"><span>Delivery, {o.area}</span><span>{fmt(o.fee)}</span></div>
-          <div className="r tot"><span>Total</span><span>{fmt(o.total)}</span></div>
-        </div>
-      </Panel>
-      <Panel className="sm" style={{ marginBottom: 16 }}>
-        <b style={{ fontWeight: 500 }}>Contact the customer</b>
-        <p className="mute" style={{ margin: "6px 0 12px" }}>{o.name}<br />{o.phone}<br />{o.cEmail || o.email}</p>
-        <div className="row">
-          <Button variant="o" size="s" href={`tel:${o.phone}`}>Call</Button>
-          <Button variant="o" size="s" href={waLink(o.phone, orderMessage(o))} target="_blank" rel="noopener noreferrer">WhatsApp update</Button>
-          <Button variant="o" size="s" href={smsLink(o.phone, orderMessage(o))}>SMS update</Button>
-          <Button variant="o" size="s" href={`mailto:${o.cEmail || o.email}`}>Email</Button>
-        </div>
-        <p className="fhint" style={{ marginTop: 8 }}>The update opens in WhatsApp or your messages app with a short message already typed, based on where the order is now. You press send.</p>
-        <b style={{ fontWeight: 500, display: "block", marginTop: 16 }}>Delivery address</b>
-        <p className="mute">{o.street}, {o.district} ({o.area})</p>
-      </Panel>
-      <Panel className="sm">
-        <div className="head" style={{ marginBottom: 8, alignItems: "center" }}>
-          <b style={{ fontWeight: 500 }}>Payment</b>
-          <PaySelect o={o} />
-        </div>
-        <p className="mute">{o.pay}{o.card ? `, card ending ${o.card.last4}` : ""}</p>
-        {o.payRef && <p className="mute">Reference: {o.payRef}</p>}
-        {o.payPhone && <p className="mute">Paid from: <a href={`tel:${o.payPhone}`}>{o.payPhone}</a></p>}
-        {o.payUpdatedAt && <p className="mute">The customer sent the payment details again on {dtm(o.payUpdatedAt)}.</p>}
-      </Panel>
-      <div style={{ marginTop: 16 }}><RequestsPanel o={o} /></div>
+      <OrderBody o={o} />
     </>
   );
 }
 
 export function AdminProducts() {
   const { products, getProduct, cats, adm, toggleProduct, setStock } = useStore();
+  const [sp] = useSearchParams();
   const [ed, setEd] = useState(null); // null closed, -1 new, n edit
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(sp.get("q") || ""); // an order's "Adjust stock" link opens the list already searching for that watch
   const [cat, setCat] = useState("All");
   const [show, setShow] = useState("All");
   const [by, setBy] = useState("added");   // which date the date picker filters: when it was added or when it was last updated

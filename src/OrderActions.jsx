@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "./store";
 import { Button, Field, Input, Panel, Select, Textarea } from "./ui";
 import MomoPanel from "./MomoPanel";
 import { RETURN_REASONS, livePays } from "./data";
-import { dt, fmt, isPhone } from "./lib";
+import { dt, dtm, fmt, isPhone } from "./lib";
+import { isMomo } from "./orderState";
 
 /* What a customer can do about one order, on the order page:
    send the payment details again, ask to cancel (while it is Processing), or ask to return it (after it is delivered, inside the
@@ -54,31 +55,44 @@ function PaymentFix({ o }) {
 }
 
 function CancelBox({ o }) {
-  const { requestCancel } = useStore();
+  const { requestCancel, cancelOwnOrder, ask } = useStore();
   const [open, setOpen] = useState(false);
   const [why, setWhy] = useState("");
   const [err, setErr] = useState("");
   const cr = o.cancelReq;
+  const paid = (o.payStatus || "Pending") === "Paid";
+  const momo = isMomo(o);
+  const processing = o.status === "Processing";
+  const instant = processing && !paid && cr?.status !== "pending";   // no payment confirmed yet: the customer can cancel at once
+  const needsOk = processing && paid && cr?.status !== "pending";    // a paid order: the shop agrees first
   const send = (e) => {
     e.preventDefault();
     if (why.trim().length < 5) { setErr("Please tell us briefly why you want to cancel."); return; }
     if (requestCancel(o.id, why)) { setOpen(false); setWhy(""); setErr(""); }
   };
-  if (o.status !== "Processing" && !cr) return null;
+  if (!(processing || cr || o.cancelledBy || o.refund)) return null;
   return (
     <Panel className="sm ac-act" style={{ marginBottom: 16 }}>
-      <b style={{ fontWeight: 500 }}>Cancel this order</b>
+      <b style={{ fontWeight: 500 }}>{processing ? "Cancel this order" : "Cancellation"}</b>
+      {instant && (
+        <>
+          <Note>You can cancel this order now, because we have not confirmed a payment yet.{momo ? " If you already sent money for it, cancel here anyway: we will check our records and contact you about a refund." : ""}</Note>
+          <div><Button variant="o" size="s" onClick={() => ask(`Cancel order ${o.id} now?${momo ? " If you already sent money, we will check our records and contact you." : ""}`, () => cancelOwnOrder(o.id), { yes: "Yes, cancel order", no: "No, keep it" })}>Cancel order</Button></div>
+        </>
+      )}
       {cr?.status === "pending" && <Note>You asked to cancel this order on {dt(cr.date)}. We will answer as soon as we can. Your reason: “{cr.reason}”</Note>}
       {cr?.status === "declined" && <Note tone="bad">Your cancellation request was declined: {cr.answer}</Note>}
-      {cr?.status === "approved" && <Note>Your cancellation request was approved.</Note>}
-      {o.status === "Processing" && cr?.status !== "pending" && (!open
-        ? <><Note>You can ask us to cancel while the order is still being prepared. We will answer you here.</Note><div><Button variant="o" size="s" onClick={() => setOpen(true)}>Request cancellation</Button></div></>
+      {cr?.status === "approved" && cr.answer !== "Cancelled by the customer" && <Note>Your cancellation request was approved.</Note>}
+      {needsOk && (!open
+        ? <><Note>This order is paid, so we check it before cancelling. Send us a request and we will answer you here.</Note><div><Button variant="o" size="s" onClick={() => setOpen(true)}>Request cancellation</Button></div></>
         : (
           <form className="stack" noValidate onSubmit={send}>
             <Field label="Why do you want to cancel?" error={err}><Textarea rows={3} maxLength={300} value={why} aria-invalid={!!err} onChange={(e) => { setWhy(e.target.value); setErr(""); }} /></Field>
             <div className="row"><Button>Send request</Button><Button type="button" variant="o" onClick={() => setOpen(false)}>Not now</Button></div>
           </form>
         ))}
+      {o.cancelledBy === "customer" && <Note>You cancelled this order on {dt(o.cancelledAt)}.{o.refundCheck === "check" ? " If you sent money for it, we will check our records and contact you." : ""}</Note>}
+      {o.refund && <Note>We recorded a refund of {fmt(o.refund.amount)}{o.refund.method ? ` (${o.refund.method})` : ""} on {dt(o.refund.date)}.</Note>}
     </Panel>
   );
 }
@@ -124,11 +138,29 @@ function ReturnBox({ o }) {
   );
 }
 
+// What the shop told the customer about this order (the same messages as in the bell), in full. Opening the order marks them as read.
+function OrderUpdates({ o }) {
+  const { myNotifs, readOrderNotifs } = useStore();
+  const mine = myNotifs.filter((n) => n.orderId === o.id);
+  const unread = mine.filter((n) => !n.read).length;
+  useEffect(() => { if (unread) readOrderNotifs(o.id); }, [unread, o.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!mine.length) return null;
+  return (
+    <Panel className="sm ac-act" style={{ marginBottom: 16 }}>
+      <b style={{ fontWeight: 500 }}>Updates about this order</b>
+      <ul className="ac-ups">
+        {mine.map((n) => <li key={n.id}><b>{n.title}</b>{n.text && <span>{n.text}</span>}<small>{dtm(n.date)}</small></li>)}
+      </ul>
+    </Panel>
+  );
+}
+
 export default function OrderActions({ o }) {
   const open = ["Processing", "Dispatched"].includes(o.status);
   const needsPay = open && (o.payStatus || "Pending") !== "Paid";
   return (
     <>
+      <OrderUpdates o={o} />
       {needsPay && <PaymentFix key={o.pay + (o.payUpdatedAt || "")} o={o} />}
       <CancelBox o={o} />
       <ReturnBox o={o} />

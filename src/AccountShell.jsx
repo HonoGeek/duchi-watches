@@ -7,7 +7,7 @@ import NotifBell from "./NotifBell";
 
 /* The customer dashboard. It has its own layout (menu on the left, top bar above the page) instead of sitting
    inside the shop's header and footer, and shares its look with the admin area. */
-const ITEMS = [["", "Overview", "grid"], ["orders", "Orders", "bag"], ["wishlist", "Wishlist", "heart"], ["addresses", "Addresses", "pin"], ["profile", "Profile", "user"]];
+const ITEMS = [["", "Overview", "grid"], ["orders", "Orders", "bag"], ["notifications", "Notifications", "bell"], ["wishlist", "Wishlist", "heart"], ["addresses", "Addresses", "pin"], ["profile", "Profile", "user"]];
 const LABELS = Object.fromEntries(ITEMS.map(([p, l]) => [p, l]));
 
 function Crumbs() {
@@ -52,11 +52,11 @@ function Menu() {
 }
 
 export default function AccountShell() {
-  const { user, orders, cartCount, axCol, setAxCol, signOut } = useStore();
+  const { user, orders, myNotifs, cartCount, axCol, setAxCol, signOut } = useStore();
   const [open, setOpen] = useMenu(); // slide-in drawer on phones
   const nav = useNavigate();
   const onTheWay = useMemo(() => orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status)).length, [orders]);
-  const badge = { orders: onTheWay };
+  const badge = { orders: onTheWay, notifications: myNotifs.filter((n) => !n.read).length };
   return (
     <div className={`ax${axCol ? " col" : ""}${open ? " open" : ""}`}>
       <div className="ax-scrim" onClick={() => setOpen(false)} aria-hidden="true" />

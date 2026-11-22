@@ -1,0 +1,48 @@
+/* ===== Order details: the side panel on the Orders list, and the pieces shared with the full page ===== */
+.odw{position:fixed;inset:0;z-index:90;display:flex;justify-content:flex-end;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:fade .2s ease}
+.odw-box{display:flex;flex-direction:column;width:min(620px,100vw);height:100%;background:var(--bg);color:var(--ink);border-left:1px solid var(--line);box-shadow:-24px 0 60px rgba(0,0,0,.35);outline:none;animation:odwin .3s var(--e)}
+[data-theme="dark"] .odw-box{background:#111113}
+.odw-h{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:22px 24px 14px}
+.odw-h h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.odw-h p{margin:4px 0 0;font-size:13px;color:var(--mute)}
+.odw-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:none;transition:border-color .2s}
+.odw-x:hover{border-color:var(--gold)}
+.odw-x svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.odw-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 24px 16px;border-bottom:1px solid var(--line)}
+.odw-b{flex:1;overflow-y:auto;padding:20px 24px 32px;overscroll-behavior:contain}
+.odw-b .panel{background:var(--soft);border-radius:16px;padding:18px 20px}
+@keyframes odwin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+
+/* the things that need the admin first */
+.od-alert{margin-bottom:16px;padding:14px;border:1px solid color-mix(in srgb,#e0a100 60%,transparent);border-radius:18px;background:color-mix(in srgb,#e0a100 8%,transparent)}
+.od-alert-h{margin:0 0 12px;font-size:13px;font-weight:600;color:#b26a00;max-width:none}
+[data-theme="dark"] .od-alert-h{color:#f0b84a}
+.od-alert .panel:last-child{margin-bottom:0!important}
+
+/* stock and activity lists */
+.od-stock,.od-act{list-style:none;margin:10px 0 12px;padding:0;display:grid;gap:10px}
+.od-stock li,.od-act li{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}
+.od-act li{display:grid;gap:2px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.od-act li:last-child{padding-bottom:0;border-bottom:0}
+.od-act li span:last-child{font-size:12px}
+
+/* the View button in the orders table */
+.ov-eye{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:6px;vertical-align:-3px}
+.tbl tr.clickable{cursor:pointer}
+.ocell{display:grid;gap:4px;justify-items:start;min-width:0}
+
+
+@media(max-width:600px){
+  .ocell{justify-items:end}
+  .odw-box{width:100vw;border-left:0}
+  .odw-h{padding:18px 16px 12px}.odw-bar{padding:0 16px 14px}.odw-b{padding:16px 16px 28px}
+}
+@media(prefers-reduced-motion:reduce){.odw,.odw-box{animation:none}}
+body .toast{z-index:400} /* confirmations must show above the side panel and every pop-up */
+
+/* dropdowns inside the panel look like the ones in the admin pages */
+.odw select.input{appearance:none;-webkit-appearance:none;padding-right:40px;cursor:pointer;border-radius:980px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a8f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:18px}
+.odw input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.odw input[type=number]::-webkit-outer-spin-button,.odw input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}

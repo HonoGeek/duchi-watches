@@ -8,7 +8,7 @@ import "./notif.css";
 
 /* The customer's notification bell. It lists what happened to their orders (dispatched, delivered, cancelled, payment)
    and shows how many are not read yet. variant "shop" fits the shop header, "ax" fits the account dashboard top bar. */
-const KIND = {
+export const KIND = {
   dispatched: AIcon.truck, delivered: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" /></svg>,
   cancelled: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" /></svg>,
   paid: AIcon.card, failed: AIcon.card, processing: AIcon.bag,
@@ -70,7 +70,7 @@ export default function NotifBell({ variant = "ax" }) {
               ))}
             </ul>
           ) : <p className="nb-e">Nothing yet. We will tell you here when your order is dispatched, delivered or cancelled.</p>}
-          <Link className="nb-f" to="/account/orders" onClick={close}>View all my orders</Link>
+          <div className="nb-f2"><Link to="/account/notifications" onClick={close}>See all notifications</Link><Link to="/account/orders" onClick={close}>My orders</Link></div>
         </div>,
         document.body
       )}

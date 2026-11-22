@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "./store";
 import { Icon, useMenu } from "./ui";
 import { PERM } from "./data";
+import { hasReq } from "./orderState";
 
 /* ---------- icons (one consistent set for the whole admin area) ---------- */
 const I = (d) => <svg viewBox="0 0 24 24" aria-hidden="true">{d}</svg>;
@@ -102,7 +103,7 @@ function Bell({ counts }) {
   useOutside(ref, close);
   const rows = [
     [counts.orders, "order", "waiting to be processed", "/admin/orders", AIcon.bag],
-    [counts.requests, "request", "waiting for your answer", "/admin/orders?req=1", AIcon.bag],
+    [counts.requests, "order", "waiting for your attention", "/admin/orders?req=1", AIcon.bag],
     [counts.messages, "message", "waiting to be read", "/admin/messages", AIcon.mail],
     [counts.low, "product", "low on stock (5 or fewer)", "/admin/products", AIcon.box],
     [counts.reviews, "review", "waiting for approval", "/admin/reviews", AIcon.star],
@@ -175,7 +176,7 @@ export default function AdminShell() {
     low: products.filter((p) => p.stock <= 5 && p.active !== false).length,
     reviews: (reviews || []).filter((r) => r.status === "pending").length,
     messages: (messages || []).filter((m) => !m.read).length,
-    requests: allOrders.filter((o) => o.cancelReq?.status === "pending" || o.returnReq?.status === "pending").length,
+    requests: allOrders.filter(hasReq).length,
   }), [allOrders, products, reviews, messages]);
   const badge = { orders: counts.orders, reviews: counts.reviews, messages: counts.messages };
 

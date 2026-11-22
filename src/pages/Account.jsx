@@ -6,9 +6,10 @@ import AccountShell from "../AccountShell";
 import { PageHead } from "../AdminShell";
 import ReviewDialog from "../ReviewDialog";
 import OrderActions from "../OrderActions";
+import { KIND } from "../NotifBell";
 import { AuthBox } from "./Login";
 import DateRange, { ymd } from "../DateRange";
-import { clean, fmt, dt, isName, isPhone } from "../lib";
+import { ago, clean, fmt, dt, dtm, isName, isPhone } from "../lib";
 import "../account-extras.css";
 
 // Rows per page in the customer area.
@@ -246,6 +247,51 @@ export function OrderDetail() {
       <OrderActions o={o} />
       <div className="row"><Button onClick={again}>Buy again</Button><Button to={`/receipt/${o.id}`} variant="o">Receipt</Button><Button to="/contact" variant="o">Need help?</Button></div>
       {dlg && <ReviewDialog {...dlg} onClose={() => setDlg(null)} />}
+    </>
+  );
+}
+
+// Every message from the shop about the customer's orders, in full: dispatched, delivered, cancelled, answers to requests, refunds.
+export function Notifications() {
+  const { myNotifs, readNotif, readAllNotifs } = useStore();
+  const [f, setF] = useState("all");
+  const unread = myNotifs.filter((n) => !n.read).length;
+  const list = myNotifs.filter((n) => f === "all" || !n.read);
+  const pg = usePaged(list, 8, f);
+  return (
+    <>
+      <PageHead title="Notifications" sub={myNotifs.length ? `${myNotifs.length} ${myNotifs.length === 1 ? "message" : "messages"} from DUCHI about your orders${unread ? `, ${unread} not read yet` : ""}.` : "Messages about your orders will show here."}
+        actions={unread > 0 && <Button size="s" variant="o" onClick={readAllNotifs}>Mark all as read</Button>} />
+      {myNotifs.length > 0 && (
+        <div className="row ofilters" role="group" aria-label="Filter notifications">
+          <Chip on={f === "all"} aria-pressed={f === "all"} onClick={() => setF("all")}>All<span className="ocnt">{myNotifs.length}</span></Chip>
+          <Chip on={f === "unread"} aria-pressed={f === "unread"} onClick={() => setF("unread")}>Not read<span className="ocnt">{unread}</span></Chip>
+        </div>
+      )}
+      {!myNotifs.length
+        ? <Empty text="Nothing yet. We will tell you here when your order is dispatched, delivered or cancelled, and when we answer a request." to="/account/orders" label="My orders" />
+        : list.length
+          ? (
+            <div className="olist">
+              {pg.items.map((n) => (
+                <article className={`panel nt${n.read ? "" : " new"}`} key={n.id}>
+                  <span className={`nb-ic k-${n.kind}`} aria-hidden="true">{KIND[n.kind]}</span>
+                  <div className="nt-b">
+                    <b>{n.title}</b>
+                    {n.text && <p>{n.text}</p>}
+                    <small className="mute" title={dtm(n.date)}>{ago(n.date)} · {dtm(n.date)}</small>
+                    <div className="row nt-a">
+                      <Link className="lnk" to={`/account/orders/${n.orderId}`} onClick={() => readNotif(n.id)}>View order {n.orderId}</Link>
+                      {!n.read && <button type="button" className="lnk mute" onClick={() => readNotif(n.id)}>Mark as read</button>}
+                    </div>
+                  </div>
+                  {!n.read && <i className="nb-u" aria-label="Not read yet" />}
+                </article>
+              ))}
+            </div>
+          )
+          : <Panel><p className="mute" style={{ marginBottom: 16 }}>You have read everything.</p><Button variant="o" size="s" onClick={() => setF("all")}>Show all messages</Button></Panel>}
+      <Pager {...pg} onPage={pg.setPage} noun="messages" />
     </>
   );
 }

@@ -153,3 +153,5 @@
 @media(max-width:360px){
   .ax .kpis{grid-template-columns:minmax(0,1fr)}
 }
+
+.db-ref{margin:-4px 0 4px;max-width:none}

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ls, sv, hashPw, newSalt, fmt, isEmail, isPhone, normPhone, clean, isName, intIn } from "./lib";
 import { orderMessage, waLink } from "./pay";
+import { isMomo, isPaid } from "./orderState";
 import { SEED_REVIEWS, REVIEWS_NEED_APPROVAL, SEED_PRODUCTS, SEED_CATS, SEED_ZONES, SEED_COUPONS, SEED_STAFF, SEED_PAYCFG, SEED_VIDEOS, DEMO_ADMIN_PASSWORD, PAY_STATUS, ST, livePays, DEFAULT_POLICIES, POLICY_KEYS, RETURN_REASONS } from "./data";
 
 const Ctx = createContext(null);
@@ -318,6 +319,7 @@ export function StoreProvider({ children }) {
   };
   const myNotifs = useMemo(() => (user ? notifs.filter((n) => n.email === user.email) : []), [notifs, user]);
   const readNotif = (id) => setNotifs((l) => l.map((n) => (n.id === id && !n.read ? { ...n, read: true } : n)));
+  const readOrderNotifs = (orderId) => setNotifs((l) => l.map((n) => (user && n.email === user.email && n.orderId === orderId && !n.read ? { ...n, read: true } : n)));
   const readAllNotifs = () => setNotifs((l) => l.map((n) => (user && n.email === user.email && !n.read ? { ...n, read: true } : n)));
   // A new note that arrives while the customer has the shop open (for example from another tab) also shows as a toast.
   const seenNotifs = useRef(null);
@@ -330,18 +332,26 @@ export function StoreProvider({ children }) {
     if (fresh) showToast(fresh.title, { to: `/account/orders/${fresh.orderId}`, label: "View" });
   }, [myNotifs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setOrderStatus = (id, status) => {
+  // opts.by "customer": the customer did this themselves, so no notice goes to them and no WhatsApp offer to the admin. opts.patch adds fields to the order.
+  const setOrderStatus = (id, status, opts = {}) => {
     const o = allOrders.find((x) => x.id === id);
     if (!o || !ST.includes(status) || o.status === status) return;
-    const old = o.status;
-    setAllOrders((a) => a.map((x) => (x.id === id ? { ...x, status, ...(status === "Delivered" ? { deliveredAt: new Date().toISOString() } : {}) } : x)));
+    const old = o.status, now = new Date().toISOString();
+    setAllOrders((a) => a.map((x) => (x.id === id ? {
+      ...x, status,
+      ...(status === "Delivered" ? { deliveredAt: now } : {}),
+      ...(status === "Cancelled" ? { restockedAt: now } : {}),                                  // the watches go back into stock automatically
+      ...(old === "Cancelled" ? { restockedAt: null, cancelledBy: null, refundCheck: null } : {}), // reopened: they are taken out again
+      ...(opts.patch || {}),
+    } : x)));
     const move = (sign) => setProducts((ps) => ps.map((p) => {
       const it = o.items.find((i) => i.id === p.id);
       return it ? { ...p, stock: Math.max(0, p.stock + sign * it.q) } : p;
     }));
     if (status === "Cancelled" && old !== "Cancelled") move(1);
     if (old === "Cancelled" && status !== "Cancelled") move(-1);
-    log(`Order ${id}: ${old} to ${status}`);
+    log(`Order ${id}: ${old} to ${status}`, opts.by === "customer" ? user?.email : undefined);
+    if (opts.by === "customer") return;
     if (ORDER_NOTES[status]) pushNotif(o, status.toLowerCase(), `Order ${id} ${ORDER_NOTES[status][0]}`, ORDER_NOTES[status][1]);
     else if (status === "Processing" && old === "Cancelled") pushNotif(o, "processing", `Order ${id} is being prepared again`, "Your order was reopened and we are getting it ready.");
     const msg = status === "Delivered" ? "Order marked as delivered. The customer will be invited to review it." : "Status updated";
@@ -372,6 +382,23 @@ export function StoreProvider({ children }) {
     patchOrder(id, { cancelReq: { date: new Date().toISOString(), reason: why, status: "pending" } });
     log(`Cancellation requested for order ${id}`, user.email);
     showToast("Your request was sent. We will answer as soon as we can.");
+    return true;
+  };
+  // An order that is still Processing with no confirmed payment can be cancelled by the customer straight away.
+  // A paid order needs the admin to agree first (requestCancel). Mobile money is flagged for a payment check: the customer
+  // normally pays before placing the order, so money may have arrived even though nobody confirmed it yet.
+  const cancelOwnOrder = (id) => {
+    const o = myOrder(id);
+    if (!o) return bad("We could not find that order");
+    if (o.status !== "Processing") return bad("This order can no longer be cancelled online. Please contact us.");
+    if (isPaid(o)) return bad("This order is paid, so we need to check it first. Please send a cancellation request.");
+    const now = new Date().toISOString();
+    setOrderStatus(id, "Cancelled", {
+      by: "customer",
+      patch: { cancelledBy: "customer", cancelledAt: now, ...(isMomo(o) ? { refundCheck: "check" } : {}),
+        ...(o.cancelReq?.status === "pending" ? { cancelReq: { ...o.cancelReq, status: "approved", answer: "Cancelled by the customer", answeredAt: now } } : {}) },
+    });
+    showToast(isMomo(o) ? "Your order was cancelled. If you already sent money, we will check our records and contact you about your refund." : "Your order was cancelled.");
     return true;
   };
   const answerCancel = (id, approve, answer = "") => {
@@ -450,6 +477,42 @@ export function StoreProvider({ children }) {
       return true;
     }
     return false;
+  };
+
+  // ----- the admin's manual control of money and stock after a cancellation or a return
+  // A cancelled order whose payment may have arrived: record the refund once the money was sent back, or say that nothing is owed.
+  const recordCancelRefund = (id, { amount, method = "" }) => {
+    const o = allOrders.find((x) => x.id === id);
+    if (!o || o.status !== "Cancelled") return bad("A refund can only be recorded on a cancelled order");
+    if (o.refund) return bad("A refund is already recorded for this order");
+    const amt = intIn(amount, 1, o.total);
+    if (amt == null) return bad(`Enter the refund as a whole number of RWF, up to ${fmt(o.total)}`);
+    const how = clean(method).slice(0, 100);
+    patchOrder(id, { refund: { amount: amt, method: how, date: new Date().toISOString() }, refundCheck: "refunded" });
+    pushNotif(o, "refunded", `Refund recorded for order ${id}`, `We recorded a refund of ${fmt(amt)}${how ? ` (${how})` : ""}.`);
+    log(`Refund of ${fmt(amt)} recorded for cancelled order ${id}`);
+    showToast("Refund recorded. The customer was told.");
+    return true;
+  };
+  const dismissRefundCheck = (id) => {
+    const o = allOrders.find((x) => x.id === id);
+    if (!o || o.status !== "Cancelled" || o.refund) return false;
+    patchOrder(id, { refundCheck: "none" });
+    log(`No refund needed for cancelled order ${id}`);
+    showToast("Saved. Nothing is owed on this order.");
+    return true;
+  };
+  // A returned watch goes back on sale only when the admin says so (it may be damaged). restock: true adds the quantities to the stock.
+  const restockReturn = (id, restock) => {
+    const o = allOrders.find((x) => x.id === id);
+    const rr = o?.returnReq;
+    if (!rr || !["approved", "refunded"].includes(rr.status)) return bad("Approve the return first");
+    if (rr.restock) return bad("The stock decision for this return was already made");
+    if (restock) setProducts((ps) => ps.map((p) => { const it = o.items.find((i) => i.id === p.id); return it ? { ...p, stock: p.stock + it.q, ...stamp() } : p; }));
+    patchOrder(id, { returnReq: { ...rr, restock: restock ? "yes" : "no", restockedAt: new Date().toISOString() } });
+    log(restock ? `Returned watches of order ${id} put back in stock` : `Returned watches of order ${id} not put back in stock`);
+    showToast(restock ? "Put back in stock." : "Saved. The returned watches were not added to the stock.");
+    return true;
   };
 
   // ----- policies written by the owner (Help page, Terms, Privacy, the home page questions)
@@ -696,8 +759,8 @@ export function StoreProvider({ children }) {
     reviews, published, reviewStats, eligible, skipRev, addReview, updateReview, deleteReview, setReviewStatus, replyReview, skipReview,
     cats, addCategory, renameCategory, deleteCategory, moveCategory, setCategoryImage,
     me, updateAdminProfile, changeAdminPassword, axCol, setAxCol,
-    requestCancel, answerCancel, updateOrderPayment, requestReturn, answerReturn, policies, savePolicies,
-    getProduct, nextProductId, ask, myNotifs, readNotif, readAllNotifs, changePassword, messages, addMessage, setMessageRead, deleteMessage, subscribers, addSubscriber, removeSubscriber,
+    requestCancel, cancelOwnOrder, answerCancel, recordCancelRefund, dismissRefundCheck, restockReturn, updateOrderPayment, requestReturn, answerReturn, policies, savePolicies,
+    getProduct, nextProductId, ask, myNotifs, readNotif, readOrderNotifs, readAllNotifs, changePassword, messages, addMessage, setMessageRead, deleteMessage, subscribers, addSubscriber, removeSubscriber,
     showToast, hideToast, setTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

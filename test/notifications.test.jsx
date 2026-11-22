@@ -99,13 +99,13 @@ describe("the customer's bell", () => {
   });
 
   it("follows changes the admin makes in another tab: the order, the bell and a toast", async () => {
-    go("/account/orders/DS-1");
+    go("/account/orders");
     expect(screen.getByText("Dispatched")).toBeTruthy();
     expect(bell().textContent).toBe("1");
     otherTab("duchi-all", [mk("DS-1", "Delivered")]);
     otherTab("duchi-notifs", [note("n4", "delivered", "Order DS-1 has been delivered"), note("n1", "dispatched", "Order DS-1 is on its way")]);
     await waitFor(() => expect(bell().textContent).toBe("2"));
-    expect(document.querySelector(".steps .d:last-child")?.textContent).toBe("Delivered");   // the progress bar moved on
+    expect(document.querySelector(".orow .spill").textContent).toBe("Delivered");             // the order in the list changed too
     expect(document.querySelector(".toast").textContent).toContain("Order DS-1 has been delivered");
     expect(within(document.querySelector(".toast")).getByText("View")).toBeTruthy();
   });

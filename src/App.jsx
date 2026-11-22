@@ -13,7 +13,7 @@ import Contact from "./pages/Contact";
 import Help, { Legal } from "./pages/Help";
 import Success from "./pages/Success";
 import Receipt from "./pages/Receipt";
-import Account, { Overview, Orders, OrderDetail, Wishlist, Addresses, Profile } from "./pages/Account";
+import Account, { Overview, Orders, OrderDetail, Notifications, Wishlist, Addresses, Profile } from "./pages/Account";
 import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit, Messages as AdminMessages, Subscribers, Policies } from "./pages/Admin";
 
 export default function App() {
@@ -66,6 +66,7 @@ export default function App() {
             <Route index element={<Overview />} />
             <Route path="orders" element={<Orders />} />
             <Route path="orders/:id" element={<OrderDetail />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="wishlist" element={<Wishlist />} />
             <Route path="addresses" element={<Addresses />} />
             <Route path="profile" element={<Profile />} />

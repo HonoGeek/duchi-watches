@@ -29,8 +29,8 @@ const boot = () => { cleanup(); render(<MemoryRouter><StoreProvider><Probe /></S
 const call = (fn) => { let r; act(() => { r = fn(); }); return r; };
 afterEach(() => vi.restoreAllMocks());
 
-describe("asking to cancel an order", () => {
-  beforeEach(() => { localStorage.clear(); asJane(); seed([mk("DS-1", "Processing")]); });
+describe("asking to cancel a paid order", () => {
+  beforeEach(() => { localStorage.clear(); asJane(); seed([mk("DS-1", "Processing", { payStatus: "Paid" })]); });
 
   it("the customer asks, the admin sees it and approves: the order is cancelled and stock comes back", () => {
     go("/account/orders/DS-1");
@@ -50,11 +50,11 @@ describe("asking to cancel an order", () => {
     asAdmin();
     go("/admin/orders");
     expect(screen.getByText("Cancel request")).toBeTruthy();                             // a badge in the list
-    expect(screen.getByRole("button", { name: /^Requests/ }).textContent).toBe("Requests1");
+    expect(screen.getByRole("button", { name: /^Needs action/ }).textContent).toBe("Needs action1");
     go("/admin/orders?req=1");
     expect(document.querySelectorAll("tbody tr").length).toBe(1);
     go("/admin");
-    expect(screen.getByText("Requests to answer").closest("a").getAttribute("href")).toBe("/admin/orders?req=1");
+    expect(screen.getByText("Orders needing action").closest("a").getAttribute("href")).toBe("/admin/orders?req=1");
     go("/admin/orders/DS-1");
     expect(screen.getByText("I ordered the wrong watch")).toBeTruthy();
     fireEvent.click(screen.getByText("Approve and cancel order"));
@@ -197,7 +197,7 @@ describe("returns and refunds, with policies the owner writes", () => {
     const rev = [...document.querySelectorAll(".kpi")].find((k) => k.querySelector(".kl").textContent === "Revenue");
     expect(rev.textContent).toContain("RWF 0");
     go("/account/orders/DS-1");
-    expect(screen.getByText(/We recorded a refund of RWF 95,000 \(MTN MoMo to 0788 123 456\)/)).toBeTruthy();
+    expect(screen.getAllByText(/We recorded a refund of RWF 95,000 \(MTN MoMo to 0788 123 456\)/).length).toBeGreaterThan(0);   // in the returns box and in the updates list
   });
 
   it("is refused outside the return period", () => {
