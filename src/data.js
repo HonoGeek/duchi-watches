@@ -87,7 +87,7 @@ export const SEED_PAYCFG = {
   airtel: { code: "000000", tpl: "*500#" },
 };
 export const PERM = {
-  Admin: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "policies", "coupons", "shipping", "payments", "team", "audit", "settings"],
+  Admin: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "policies", "coupons", "shipping", "payments", "team", "site", "audit", "settings"],
   Manager: ["", "orders", "products", "categories", "reviews", "messages", "subscribers", "videos", "policies", "coupons", "shipping", "audit", "settings"],
   Staff: ["", "orders", "products", "settings"],
 };
@@ -112,8 +112,23 @@ export const SEED_REVIEWS = REVIEWS.map((r, i) => ({
   date: new Date(Date.now() - r.ago * 864e5).toISOString(), verified: true, status: "published", sample: true,
 }));
 
-// The shop's details, printed on receipts. Replace them with your own.
-export const SHOP = { name: "DUCHI STORE", place: "Kigali, Rwanda", email: "hello@duchistore.rw", phone: "+250 000 000 000" };
+// The shop's name, contact details, social links and the home page hero. The owner changes them in Admin > Site settings,
+// and every page, the receipts and the messages follow. These are the starting values.
+export const DEFAULT_SITE = {
+  name: "DUCHI STORE",   // the full name: receipts, page titles, the footer
+  short: "DUCHI",        // the short name shown in the logo and in headings
+  tagline: "Quality watches, checked by our team and delivered across Rwanda.",
+  place: "Kigali, Rwanda", email: "hello@duchistore.rw", phone: "", // the phone is also the WhatsApp number
+  social: { instagram: "", tiktok: "", facebook: "", x: "" },
+  hero: {
+    headline: "Time, well kept.",
+    text: "Discover watches that bring together timeless design, everyday comfort, and effortless style. Whether you're dressing for a special occasion or making every day count, find a timepiece that speaks to you.",
+    type: "image",       // "image" or "video"
+    image: "",           // an uploaded photo or a link. Empty: the photo that comes with the shop
+    video: null,         // an uploaded video: { id, name, size, poster, duration } (the file itself is kept in the browser's IndexedDB)
+    videoUrl: "",        // or a link to a video file
+  },
+};
 
 // Policies are written by the shop owner in Admin > Policies, one paragraph per line. A policy that is empty shows
 // "being finalised" on the Help page, so the shop never states a rule nobody wrote.
@@ -121,6 +136,6 @@ export const SHOP = { name: "DUCHI STORE", place: "Kigali, Rwanda", email: "hell
 export const POLICY_KEYS = [["delivery", "Delivery"], ["returns", "Returns and exchanges"], ["warranty", "Warranty"], ["tracking", "Order tracking"], ["terms", "Terms of sale"], ["privacy", "Privacy policy"]];
 export const DEFAULT_POLICIES = {
   delivery: [], returns: [], warranty: [], terms: [], privacy: [], returnDays: 0,
-  tracking: ["To track your order, sign in to your DUCHI account and open My orders. You will see the status of each order there. You need to be signed in to view it."],
+  tracking: ["To track your order, sign in to your account and open My orders. You will see the status of each order there. You need to be signed in to view it."],
 };
 export const RETURN_REASONS = ["The watch has a fault", "Damaged when it arrived", "Not what I ordered", "Not as described", "I changed my mind"];

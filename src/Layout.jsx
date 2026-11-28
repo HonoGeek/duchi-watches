@@ -4,6 +4,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useStore } from "./store";
 import { Icon, Button, MenuButton, useMenu } from "./ui";
 import { fmt } from "./lib";
+import { waLink } from "./pay";
 
 export function Topbar() {
   const { zones } = useStore();
@@ -11,7 +12,7 @@ export function Topbar() {
 }
 
 export function Header() {
-  const { theme, setTheme, cartCount, user } = useStore();
+  const { theme, setTheme, cartCount, user, site } = useStore();
   const [open, setOpen] = useMenu();
   const [sc, setSc] = useState(false);
   useEffect(() => {
@@ -27,7 +28,7 @@ export function Header() {
     <header className={`${sc ? "scrolled" : ""}${open ? " mopen" : ""}`.trim()}>
       <div className="wrap nav">
         <MenuButton open={open} onClick={() => setOpen((o) => !o)} label="menu" controls="mnav" />
-        <Link className="logo" to="/">DUCHI<i>.</i></Link>
+        <Link className="logo" to="/">{site.short.toUpperCase()}<i>.</i></Link>
         <nav id="mnav" className={`links${open ? " open" : ""}`}>
           <NavLink to="/" end onClick={close} style={{ "--i": 0 }}>Home</NavLink>
           <NavLink to="/shop" onClick={close} style={{ "--i": 1 }}>Shop</NavLink>
@@ -48,23 +49,29 @@ export function Header() {
 }
 
 export function Footer() {
-  const social = [["Instagram", "instagram"], ["TikTok", "tiktok"], ["Facebook", "facebook"], ["X", "x"], ["WhatsApp", "whatsapp"]];
+  const { site } = useStore();
+  // Only the links the owner filled in (Admin > Site settings) are shown. WhatsApp uses the shop's phone number.
+  const social = [["Instagram", "instagram"], ["TikTok", "tiktok"], ["Facebook", "facebook"], ["X", "x"]]
+    .filter(([, k]) => site.social[k]).map(([n, k]) => [n, k, site.social[k]]);
+  if (site.phone) social.push(["WhatsApp", "whatsapp", waLink(site.phone)]);
   return (
     <footer>
       <div className="wrap">
         <div className="fc">
           <div>
-            <div className="logo" style={{ color: "var(--ink)" }}>DUCHI<i>.</i></div>
-            <p style={{ marginTop: 10, maxWidth: 280 }}>Quality watches, checked by our team and delivered across Rwanda.</p>
-            <div className="soc">
-              {social.map(([n, k]) => <a key={k} href="#" aria-label={n} onClick={(e) => e.preventDefault()}>{Icon[k]}</a>)}
-            </div>
+            <div className="logo" style={{ color: "var(--ink)" }}>{site.short.toUpperCase()}<i>.</i></div>
+            {site.tagline && <p style={{ marginTop: 10, maxWidth: 280 }}>{site.tagline}</p>}
+            {social.length > 0 && (
+              <div className="soc">
+                {social.map(([n, k, href]) => <a key={k} href={href} target="_blank" rel="noopener noreferrer" aria-label={n}>{Icon[k]}</a>)}
+              </div>
+            )}
           </div>
           <div><h4>Shop</h4><Link to="/shop">All watches</Link><Link to="/account">My account</Link><Link to="/cart">Cart</Link><Link to="/checkout">Checkout</Link></div>
           <div><h4>Help</h4><Link to="/contact">Contact us</Link><Link to="/help#delivery">Delivery</Link><Link to="/help#returns">Returns</Link><Link to="/help#tracking">Order tracking</Link></div>
           <div><h4>Legal</h4><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link><Link to="/help#warranty">Warranty</Link></div>
         </div>
-        <p>© 2026 DUCHI STORE, Kigali, Rwanda.</p>
+        <p>© {new Date().getFullYear()} {site.name}, {site.place}.</p>
       </div>
     </footer>
   );
@@ -97,8 +104,13 @@ export function Toast() {
   );
 }
 
-export const WhatsApp = () => (
-  <a className="btn btn-g wa" href="#" aria-label="WhatsApp us" onClick={(e) => e.preventDefault()}>
-    <span className="t">WhatsApp us</span>{Icon.whatsapp}
-  </a>
-);
+// The chat button opens WhatsApp on the shop's phone number (Admin > Site settings). Without a number it is not shown.
+export const WhatsApp = () => {
+  const { site } = useStore();
+  if (!site.phone) return null;
+  return (
+    <a className="btn btn-g wa" href={waLink(site.phone, `Hello ${site.short}, I have a question.`)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp us">
+      <span className="t">WhatsApp us</span>{Icon.whatsapp}
+    </a>
+  );
+};

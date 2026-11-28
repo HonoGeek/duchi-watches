@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ls, sv, hashPw, newSalt, fmt, isEmail, isPhone, normPhone, clean, isName, intIn } from "./lib";
+import { ls, sv, hashPw, newSalt, fmt, isEmail, isPhone, normPhone, clean, isName, intIn, isHttpsUrl, socialUrl, SOCIALS } from "./lib";
 import { orderMessage, waLink } from "./pay";
-import { isMomo, isPaid } from "./orderState";
-import { SEED_REVIEWS, REVIEWS_NEED_APPROVAL, SEED_PRODUCTS, SEED_CATS, SEED_ZONES, SEED_COUPONS, SEED_STAFF, SEED_PAYCFG, SEED_VIDEOS, DEMO_ADMIN_PASSWORD, PAY_STATUS, ST, livePays, DEFAULT_POLICIES, POLICY_KEYS, RETURN_REASONS } from "./data";
+import { isMomo, isPaid, moveOrder } from "./orderState";
+import { SEED_REVIEWS, REVIEWS_NEED_APPROVAL, SEED_PRODUCTS, SEED_CATS, SEED_ZONES, SEED_COUPONS, SEED_STAFF, SEED_PAYCFG, SEED_VIDEOS, DEMO_ADMIN_PASSWORD, PAY_STATUS, ST, livePays, DEFAULT_POLICIES, DEFAULT_SITE, POLICY_KEYS, RETURN_REASONS } from "./data";
 
 const Ctx = createContext(null);
 export const useStore = () => useContext(Ctx);
@@ -42,6 +42,8 @@ export function StoreProvider({ children }) {
   const [payCfg, setPayCfg] = usePersist("duchi-paycfg", SEED_PAYCFG);
   const [videos, setVideos] = usePersist("duchi-videos", SEED_VIDEOS);
   const [messages, setMessages] = usePersist("duchi-messages", []);       // Contact page messages
+  const [siteRaw, setSite] = usePersist("duchi-site", DEFAULT_SITE);          // name, contact, social links, hero (Admin > Site settings)
+  const site = useMemo(() => ({ ...DEFAULT_SITE, ...siteRaw, social: { ...DEFAULT_SITE.social, ...siteRaw.social }, hero: { ...DEFAULT_SITE.hero, ...siteRaw.hero } }), [siteRaw]);
   const [policiesRaw, setPolicies] = usePersist("duchi-policies", DEFAULT_POLICIES);   // written by the owner in Admin > Policies
   const policies = useMemo(() => ({ ...DEFAULT_POLICIES, ...policiesRaw }), [policiesRaw]);
   const [notifs, setNotifs] = usePersist("duchi-notifs", []);             // notes for customers about their orders (the bell)
@@ -335,13 +337,16 @@ export function StoreProvider({ children }) {
   // opts.by "customer": the customer did this themselves, so no notice goes to them and no WhatsApp offer to the admin. opts.patch adds fields to the order.
   const setOrderStatus = (id, status, opts = {}) => {
     const o = allOrders.find((x) => x.id === id);
-    if (!o || !ST.includes(status) || o.status === status) return;
+    if (!o || !ST.includes(status) || o.status === status) return false;
+    const rule = moveOrder(o, status, (pid) => byId.get(pid)?.stock ?? Infinity);
+    if (!rule.ok) return bad(rule.error);
     const old = o.status, now = new Date().toISOString();
     setAllOrders((a) => a.map((x) => (x.id === id ? {
       ...x, status,
       ...(status === "Delivered" ? { deliveredAt: now } : {}),
       ...(status === "Cancelled" ? { restockedAt: now } : {}),                                  // the watches go back into stock automatically
       ...(old === "Cancelled" ? { restockedAt: null, cancelledBy: null, refundCheck: null } : {}), // reopened: they are taken out again
+      ...(old === "Delivered" ? { deliveredAt: null } : {}),                                          // a delivery marked by mistake is undone
       ...(opts.patch || {}),
     } : x)));
     const move = (sign) => setProducts((ps) => ps.map((p) => {
@@ -351,13 +356,16 @@ export function StoreProvider({ children }) {
     if (status === "Cancelled" && old !== "Cancelled") move(1);
     if (old === "Cancelled" && status !== "Cancelled") move(-1);
     log(`Order ${id}: ${old} to ${status}`, opts.by === "customer" ? user?.email : undefined);
-    if (opts.by === "customer") return;
-    if (ORDER_NOTES[status]) pushNotif(o, status.toLowerCase(), `Order ${id} ${ORDER_NOTES[status][0]}`, ORDER_NOTES[status][1]);
-    else if (status === "Processing" && old === "Cancelled") pushNotif(o, "processing", `Order ${id} is being prepared again`, "Your order was reopened and we are getting it ready.");
+    if (opts.by === "customer") return true;
+    if (status === "Dispatched" && old === "Delivered") pushNotif(o, "dispatched", `Order ${id}: status corrected`, "We corrected the status of your order: it is still on its way to you.");
+    else if (ORDER_NOTES[status]) pushNotif(o, status.toLowerCase(), `Order ${id} ${ORDER_NOTES[status][0]}`, ORDER_NOTES[status][1]);
+    else if (status === "Processing") pushNotif(o, "processing", `Order ${id} is being prepared again`, old === "Cancelled" ? "Your order was reopened and we are getting it ready." : "We moved your order back to preparation. We will tell you when it is dispatched.");
+
     const msg = status === "Delivered" ? "Order marked as delivered. The customer will be invited to review it." : "Status updated";
     // For the steps the customer cares about, offer a ready-to-send WhatsApp message (no server needed: it opens WhatsApp with the text typed in)
-    if (["Dispatched", "Delivered", "Cancelled"].includes(status)) showToast(msg, { label: "WhatsApp customer", action: () => window.open(waLink(o.phone, orderMessage({ ...o, status })), "_blank", "noopener") });
+    if (["Dispatched", "Delivered", "Cancelled"].includes(status)) showToast(msg, { label: "WhatsApp customer", action: () => window.open(waLink(o.phone, orderMessage({ ...o, status }, site)), "_blank", "noopener") });
     else showToast(msg);
+    return true;
   };
 
   // ----- what a customer can do about an order, and how the admin answers
@@ -450,7 +458,7 @@ export function StoreProvider({ children }) {
     return true;
   };
   // status: "approved" or "declined" for a new request, then "refunded" once the money has been sent back by hand.
-  const answerReturn = (id, status, { answer = "", amount, method = "" } = {}) => {
+  const answerReturn = (id, status, { answer = "", amount, method = "", restock = true } = {}) => {
     const o = allOrders.find((x) => x.id === id);
     const rr = o?.returnReq;
     if (!rr) return bad("There is no return request for this order");
@@ -470,10 +478,12 @@ export function StoreProvider({ children }) {
       const amt = intIn(amount, 1, o.total);
       if (amt == null) return bad(`Enter the refund as a whole number of RWF, up to ${fmt(o.total)}`);
       const how = clean(method).slice(0, 100);
-      patchOrder(id, { returnReq: { ...rr, status: "refunded", refund: { amount: amt, method: how, date: now } } });
+      const back = restock !== false && !rr.restock; // the returned watches go back into stock automatically (not when the admin unticks it, or already decided)
+      if (back) setProducts((ps) => ps.map((p) => { const it = o.items.find((i) => i.id === p.id); return it ? { ...p, stock: p.stock + it.q, ...stamp() } : p; }));
+      patchOrder(id, { returnReq: { ...rr, status: "refunded", refund: { amount: amt, method: how, date: now }, ...(rr.restock ? {} : { restock: back ? "yes" : "no", restockedAt: now }) } });
       pushNotif(o, "refunded", `Refund recorded for order ${id}`, `We recorded a refund of ${fmt(amt)}${how ? ` (${how})` : ""}.`);
-      log(`Refund of ${fmt(amt)} recorded for order ${id}`);
-      showToast("Refund recorded. The customer was told.");
+      log(`Refund of ${fmt(amt)} recorded for order ${id}${back ? ", watches put back in stock" : rr.restock ? "" : ", watches not put back in stock"}`);
+      showToast(back ? "Refund recorded and the watches are back in stock. The customer was told." : "Refund recorded. The customer was told.");
       return true;
     }
     return false;
@@ -512,6 +522,37 @@ export function StoreProvider({ children }) {
     patchOrder(id, { returnReq: { ...rr, restock: restock ? "yes" : "no", restockedAt: new Date().toISOString() } });
     log(restock ? `Returned watches of order ${id} put back in stock` : `Returned watches of order ${id} not put back in stock`);
     showToast(restock ? "Put back in stock." : "Saved. The returned watches were not added to the stock.");
+    return true;
+  };
+
+  // ----- the site's name, contact details, social links and hero (the owner changes them, every page follows)
+  const saveSite = (s) => {
+    const name = clean(s.name), short = clean(s.short), tagline = clean(s.tagline), place = clean(s.place), email = String(s.email ?? "").trim().toLowerCase();
+    if (name.length < 2 || name.length > 40) return bad("The store name needs 2 to 40 characters");
+    if (short.length < 2 || short.length > 16 || !/[\p{L}\p{N}]/u.test(short)) return bad("The short name shown in the logo needs 2 to 16 characters");
+    if (tagline.length > 140) return bad("Keep the short description under 140 characters");
+    if (place.length < 2 || place.length > 60) return bad("Enter where the shop is, for example Kigali, Rwanda");
+    if (!isEmail(email)) return bad("Enter a valid email address for the shop");
+    const phone = String(s.phone ?? "").trim();
+    if (phone && !isPhone(phone)) return bad("Enter a valid phone number, for example 0788 123 456, or leave it empty");
+    const social = {};
+    for (const [k, label] of SOCIALS) {
+      const r = socialUrl(k, s.social?.[k]);
+      if (r.error) return bad(`${label}: ${r.error}`);
+      social[k] = r.url;
+    }
+    const h = s.hero || {};
+    const headline = clean(h.headline), text = clean(h.text);
+    if (headline.length < 2 || headline.length > 60) return bad("The home page headline needs 2 to 60 characters");
+    if (text.length > 300) return bad("Keep the home page text under 300 characters");
+    if (!["image", "video"].includes(h.type)) return bad("Choose an image or a video for the home page");
+    const image = String(h.image ?? "").trim(), videoUrl = String(h.videoUrl ?? "").trim();
+    if (image && !(image.startsWith("data:image/") || isHttpsUrl(image) || image.startsWith("/"))) return bad("The hero photo must be an uploaded photo or a link that starts with https://");
+    if (videoUrl && !isHttpsUrl(videoUrl)) return bad("The video link must start with https://");
+    if (h.type === "video" && !h.video && !videoUrl) return bad("Upload a video or paste a video link, or choose Image for the home page");
+    setSite({ name, short, tagline, place, email, phone, social, hero: { headline, text, type: h.type, image, video: h.video || null, videoUrl } });
+    log("Updated the site settings");
+    showToast("Site settings saved. Every page now uses them.");
     return true;
   };
 
@@ -759,7 +800,7 @@ export function StoreProvider({ children }) {
     reviews, published, reviewStats, eligible, skipRev, addReview, updateReview, deleteReview, setReviewStatus, replyReview, skipReview,
     cats, addCategory, renameCategory, deleteCategory, moveCategory, setCategoryImage,
     me, updateAdminProfile, changeAdminPassword, axCol, setAxCol,
-    requestCancel, cancelOwnOrder, answerCancel, recordCancelRefund, dismissRefundCheck, restockReturn, updateOrderPayment, requestReturn, answerReturn, policies, savePolicies,
+    site, saveSite, requestCancel, cancelOwnOrder, answerCancel, recordCancelRefund, dismissRefundCheck, restockReturn, updateOrderPayment, requestReturn, answerReturn, policies, savePolicies,
     getProduct, nextProductId, ask, myNotifs, readNotif, readOrderNotifs, readAllNotifs, changePassword, messages, addMessage, setMessageRead, deleteMessage, subscribers, addSubscriber, removeSubscriber,
     showToast, hideToast, setTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
   };

@@ -9,7 +9,7 @@ const isReal = (r) => !!r && !!r.orderId && typeof r.t === "string" && r.t.trim(
 
 // Home page carousel: the latest published reviews from real customers.
 export default function Reviews({ alt = true }) {
-  const { published, products } = useStore();
+  const { published, getProduct, site } = useStore();
   const real = published.filter(isReal);
   const list = [...real].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 12);
   const { ref, go, canPrev, canNext, onKeyDown } = useCarousel(list.length);
@@ -21,7 +21,7 @@ export default function Reviews({ alt = true }) {
         <Reveal className="head" style={{ alignItems: "center" }}>
           <div className="sh">
             <h2 className="h2">Stories From Our Customers</h2>
-            <p className="sub">The best measure of our work is the experience of the people who choose DUCHI. Discover what our customers say about their watches, shopping experience, and service.</p>
+            <p className="sub">The best measure of our work is the experience of the people who choose {site.short}. Discover what our customers say about their watches, shopping experience, and service.</p>
             {real.length > 0 && (
               <div className="row rv-sum">
                 <Stars n={Math.round(avg)} />
@@ -41,7 +41,7 @@ export default function Reviews({ alt = true }) {
           <div className="rvw" ref={ref} tabIndex={0} role="region" aria-label="Customer reviews" onKeyDown={onKeyDown}>
             {list.map((r, i) => {
               const name = (r.n || "Customer").trim();
-              const prod = products[r.pid];
+              const prod = getProduct(r.pid);
               return (
                 <Reveal key={r.id} d={Math.min(i, 4) * 80} className="rcw">
                   <article className="rc">

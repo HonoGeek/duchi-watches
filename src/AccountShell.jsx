@@ -52,7 +52,7 @@ function Menu() {
 }
 
 export default function AccountShell() {
-  const { user, orders, myNotifs, cartCount, axCol, setAxCol, signOut } = useStore();
+  const { user, orders, myNotifs, cartCount, axCol, setAxCol, signOut, site } = useStore();
   const [open, setOpen] = useMenu(); // slide-in drawer on phones
   const nav = useNavigate();
   const onTheWay = useMemo(() => orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status)).length, [orders]);
@@ -63,8 +63,8 @@ export default function AccountShell() {
       <aside className="ax-side" aria-label="Account menu">
         <div className="ax-brand">
           <Link to="/account" className="ax-logo" aria-label="My account">
-            <span className="ax-mark">D</span>
-            <span className="ax-name">DUCHI<i>.</i><small>Account</small></span>
+            <span className="ax-mark">{site.short[0].toUpperCase()}</span>
+            <span className="ax-name">{site.short.toUpperCase()}<i>.</i><small>Account</small></span>
           </Link>
           <button type="button" className="ax-fold" onClick={() => setAxCol(!axCol)} aria-pressed={axCol}
             aria-label={axCol ? "Expand the menu" : "Collapse the menu"} title={axCol ? "Expand menu" : "Collapse menu"}>{AIcon.fold}</button>

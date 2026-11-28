@@ -30,6 +30,7 @@ export const AIcon = {
   user: I(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>),
   mail: I(<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7.5l8.5 6 8.5-6" /></>),
   doc: I(<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />),
+  sliders: I(<path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4" />),
   at: I(<><circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9" /></>),
 };
 
@@ -39,7 +40,7 @@ const GROUPS = [
   ["Store", [["orders", "Orders", "bag"], ["products", "Products", "box"], ["categories", "Categories", "tag"], ["reviews", "Reviews", "star"], ["coupons", "Coupons", "ticket"], ["shipping", "Shipping", "truck"]]],
   ["Customers", [["messages", "Messages", "mail"], ["subscribers", "Email list", "at"]]],
   ["Content", [["videos", "Videos", "play"], ["policies", "Policies", "doc"]]],
-  ["System", [["payments", "Payments", "card"], ["team", "Team and roles", "users"], ["audit", "Audit log", "list"], ["settings", "Settings", "cog"]]],
+  ["System", [["payments", "Payments", "card"], ["team", "Team and roles", "users"], ["site", "Site settings", "sliders"], ["audit", "Audit log", "list"], ["settings", "Settings", "cog"]]],
 ];
 const LABELS = Object.fromEntries(GROUPS.flatMap(([, l]) => l.map(([p, n]) => [p, n])));
 
@@ -168,7 +169,7 @@ export function ThemeBtn() {
 
 /* ---------- the shell: collapsible sidebar + top bar + page ---------- */
 export default function AdminShell() {
-  const { adm, me, allOrders, products, reviews, messages, axCol, setAxCol } = useStore();
+  const { adm, me, allOrders, products, reviews, messages, axCol, setAxCol, site } = useStore();
   const [open, setOpen] = useMenu(); // the sidebar becomes a slide-in drawer on phones
   const allowed = PERM[adm.role] || [];
   const counts = useMemo(() => ({
@@ -185,9 +186,9 @@ export default function AdminShell() {
       <div className="ax-scrim" onClick={() => setOpen(false)} aria-hidden="true" />
       <aside className="ax-side" aria-label="Admin menu">
         <div className="ax-brand">
-          <Link to="/admin" className="ax-logo" aria-label="DUCHI admin home">
-            <span className="ax-mark">D</span>
-            <span className="ax-name">DUCHI<i>.</i><small>Admin</small></span>
+          <Link to="/admin" className="ax-logo" aria-label={`${site.short} admin home`}>
+            <span className="ax-mark">{site.short[0].toUpperCase()}</span>
+            <span className="ax-name">{site.short.toUpperCase()}<i>.</i><small>Admin</small></span>
           </Link>
           <button type="button" className="ax-fold" onClick={() => setAxCol(!axCol)} aria-pressed={axCol}
             aria-label={axCol ? "Expand the menu" : "Collapse the menu"} title={axCol ? "Expand menu" : "Collapse menu"}>{AIcon.fold}</button>

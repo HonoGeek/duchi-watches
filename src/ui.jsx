@@ -222,7 +222,7 @@ export function ProductCard({ p, view = "grid" }) {
 export function Newsletter() {
   const [email, setEmail] = useState("");
   const [st, setSt] = useState({ kind: "idle", msg: "" }); // idle | error | done
-  const { showToast, addSubscriber } = useStore();
+  const { showToast, addSubscriber, site } = useStore();
   const fail = (msg) => setSt({ kind: "error", msg });
   const submit = (e) => {
     e.preventDefault();
@@ -237,7 +237,7 @@ export function Newsletter() {
     <section className="alt news">
       <div className="wrap">
         <h2 className="h2">Stay Ahead of Time.</h2>
-        <p className="sub" style={{ margin: "14px auto 0" }}>Be the first to discover new arrivals, exclusive offers, and the latest additions to our collection. Get the latest from DUCHI, delivered straight to your inbox.</p>
+        <p className="sub" style={{ margin: "14px auto 0" }}>Be the first to discover new arrivals, exclusive offers, and the latest additions to our collection. Get the latest from {site.short}, delivered straight to your inbox.</p>
         {st.kind !== "done" && (
           <form noValidate onSubmit={submit}>
             <Input type="email" name="email" inputMode="email" autoComplete="email" placeholder="Your email address" aria-label="Email address"

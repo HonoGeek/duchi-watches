@@ -9,7 +9,7 @@ const PAGE = 5; // reviews per page
 
 // The reviews of one product, with the rating summary and (for people who received it) the "write a review" button.
 export default function ProductReviews({ p }) {
-  const { reviews, published, user, eligible, allOrders, deleteReview, ask } = useStore();
+  const { reviews, published, user, eligible, allOrders, deleteReview, ask, site } = useStore();
   const [sort, setSort] = useState("new");
   const [dlg, setDlg] = useState(null);
 
@@ -70,7 +70,7 @@ export default function ProductReviews({ p }) {
                     </span>
                   )}
                 </div>
-                {r.reply && <div className="rrep"><b>DUCHI replied</b><p>{r.reply}</p></div>}
+                {r.reply && <div className="rrep"><b>{site.short} replied</b><p>{r.reply}</p></div>}
               </article>
             ))}
             <Pager {...pg} onPage={pg.setPage} noun="reviews" />

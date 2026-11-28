@@ -14,11 +14,12 @@ import Help, { Legal } from "./pages/Help";
 import Success from "./pages/Success";
 import Receipt from "./pages/Receipt";
 import Account, { Overview, Orders, OrderDetail, Notifications, Wishlist, Addresses, Profile } from "./pages/Account";
+import SiteSettings from "./pages/AdminSite";
 import Admin, { Dashboard, AdminOrders, AdminOrderDetail, AdminProducts, Categories, ReviewsAdmin, Settings, Videos as AdminVideos, Coupons, Shipping, Payments, Team, Audit, Messages as AdminMessages, Subscribers, Policies } from "./pages/Admin";
 
 export default function App() {
   const { pathname, hash } = useLocation();
-  const { user } = useStore();
+  const { user, site } = useStore();
   const admin = pathname.startsWith("/admin");
   // The admin area and the signed-in customer dashboard have their own layout, so the shop header and footer are hidden there.
   const dash = admin || (pathname.startsWith("/account") && !!user) || pathname.startsWith("/receipt"); // the receipt is a plain printable page
@@ -41,8 +42,8 @@ export default function App() {
   }, [pathname]);
   useEffect(() => {
     const s = pathname.split("/")[1];
-    document.title = (s ? s[0].toUpperCase() + s.slice(1) : "Watches in Rwanda") + " | DUCHI STORE";
-  }, [pathname]);
+    document.title = s ? `${s[0].toUpperCase() + s.slice(1)} | ${site.name}` : `${site.name} | ${site.place}`;
+  }, [pathname, site.name, site.place]);
 
   return (
     <>
@@ -87,6 +88,7 @@ export default function App() {
             <Route path="messages" element={<AdminMessages />} />
             <Route path="subscribers" element={<Subscribers />} />
             <Route path="policies" element={<Policies />} />
+            <Route path="site" element={<SiteSettings />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

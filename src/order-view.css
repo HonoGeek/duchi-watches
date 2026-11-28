@@ -46,3 +46,11 @@ body .toast{z-index:400} /* confirmations must show above the side panel and eve
   background-repeat:no-repeat;background-position:right 14px center;background-size:18px}
 .odw input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .odw input[type=number]::-webkit-outer-spin-button,.odw input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* the payment block: the facts to check before pressing Paid */
+.od-pay{margin:12px 0;display:grid;gap:10px}
+.od-pay>div{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap}
+.od-pay dt{color:var(--mute);font-size:13px}
+.od-pay dd{margin:0;text-align:right;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end}
+.od-pay .lnk{font-size:13px}
+@media(max-width:600px){.od-pay>div{flex-direction:column;align-items:flex-start}.od-pay dd{text-align:left;justify-content:flex-start}}

@@ -118,3 +118,29 @@ export const ago = (d, now = Date.now()) => {
   if (s < 7 * 86400) { const n = Math.floor(s / 86400); return `${n} ${n === 1 ? "day" : "days"} ago`; }
   return dt(d);
 };
+
+// ----- social links: the owner types a full link or just the account name (@name); we build and check the link
+const SOCIAL = {
+  instagram: { label: "Instagram", hosts: ["instagram.com"], make: (h) => `https://instagram.com/${h}` },
+  tiktok: { label: "TikTok", hosts: ["tiktok.com"], make: (h) => `https://www.tiktok.com/@${h}` },
+  facebook: { label: "Facebook", hosts: ["facebook.com", "fb.com"], make: (h) => `https://facebook.com/${h}` },
+  x: { label: "X", hosts: ["x.com", "twitter.com"], make: (h) => `https://x.com/${h}` },
+};
+export const SOCIALS = Object.entries(SOCIAL).map(([k, v]) => [k, v.label]);
+// Returns { url } (empty when nothing was typed) or { error }.
+export const socialUrl = (kind, raw) => {
+  const v = String(raw ?? "").trim(), spec = SOCIAL[kind];
+  if (!v) return { url: "" };
+  if (/^https?:\/\//i.test(v)) {
+    let u;
+    try { u = new URL(v); } catch { return { error: "That is not a valid link" }; }
+    const host = u.hostname.replace(/^(www|m)\./, "");
+    if (!spec.hosts.some((h) => host === h || host.endsWith("." + h))) return { error: `That does not look like ${/^[AEIOUX]/i.test(spec.label) ? "an" : "a"} ${spec.label} link` };
+    u.protocol = "https:";
+    return { url: u.toString() };
+  }
+  const h = v.replace(/^@/, "").replace(/\/+$/, "");
+  if (!/^[A-Za-z0-9._-]{2,40}$/.test(h)) return { error: `Use the ${spec.label} link or the account name, like @name` };
+  return { url: spec.make(h) };
+};
+export const isHttpsUrl = (v) => { try { return new URL(String(v)).protocol === "https:"; } catch { return false; } };

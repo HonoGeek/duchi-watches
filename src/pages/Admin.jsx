@@ -19,13 +19,13 @@ const PAGE_SIZE = { orders: 8, products: 8, coupons: 8, team: 8, audit: 10, revi
 
 const None = ({ text }) => <Panel><p className="mute">{text}</p></Panel>;
 // Every admin page starts with the same header: a title, an optional line of help text and optional buttons.
-const Title = ({ children, sub, actions }) => <PageHead title={children} sub={sub} actions={actions} />;
+export const Title = ({ children, sub, actions }) => <PageHead title={children} sub={sub} actions={actions} />;
 const Chev = ({ up }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={up ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} /></svg>
 );
 
 function AdminLogin() {
-  const { adminSignIn } = useStore();
+  const { adminSignIn, site } = useStore();
   const [busy, setBusy] = useState(false);
   const [show, setShow] = useState(false);
   const submit = async (e) => {
@@ -39,10 +39,10 @@ function AdminLogin() {
     <div className="ax-login">
       <form className="ax-lc" onSubmit={submit}>
         <div className="ax-lh">
-          <span className="ax-mark">D</span>
-          <div><h1>Welcome back</h1><p>Sign in to the DUCHI admin area.</p></div>
+          <span className="ax-mark">{site.short[0].toUpperCase()}</span>
+          <div><h1>Welcome back</h1><p>Sign in to the {site.short} admin area.</p></div>
         </div>
-        <Field label="Email"><Input name="email" type="email" required autoComplete="username" placeholder="you@duchistore.rw" /></Field>
+        <Field label="Email"><Input name="email" type="email" required autoComplete="username" placeholder={`you@${site.email.split("@")[1]}`} /></Field>
         <Field label="Password"><Input name="pw" type={show ? "text" : "password"} required autoComplete="current-password" /></Field>
         <label className="fchk"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /><span>Show password</span></label>
         <Button block disabled={busy}>{busy ? "Signing in..." : "Sign in"}</Button>
@@ -61,7 +61,7 @@ export default function Admin() {
 export { default as Settings } from "../AdminSettings";
 
 // Page-level permission check.
-function Allow({ sec, children }) {
+export function Allow({ sec, children }) {
   const { adm } = useStore();
   return PERM[adm.role].includes(sec) ? children : <None text="Your role does not have access to this page." />;
 }
@@ -85,7 +85,7 @@ function OrdersTable({ list, empty = "No orders yet.", onOpen }) {
           <td>{o.name}</td>
           <td><div className="contact"><a href={`tel:${o.phone}`}>{o.phone}</a><a href={`mailto:${o.cEmail || o.email}`}>{o.cEmail || o.email}</a></div></td>
           <td className="nw">{dt(o.date)}</td><td className="nw">{fmt(o.total)}</td>
-          <td><div><PayPill s={o.payStatus || "Pending"} /><div className="mute sm" style={{ marginTop: 4 }}>{o.pay}</div></div></td>
+          <td><div><PayPill s={o.payStatus || "Pending"} /><div className="mute sm" style={{ marginTop: 4 }}>{o.pay}</div>{o.payPhone && <div className="sm ussd" style={{ marginTop: 2 }}>From {o.payPhone}</div>}{o.payRef && <div className="mute sm ussd">Ref {o.payRef}</div>}</div></td>
           <td><StatusSelect o={o} /></td>
           <td>
             {onOpen
@@ -351,7 +351,7 @@ function OrdersPage() {
   // Everything except the status chip, so the numbers on the chips always match the other filters.
   const baseNoReq = allOrders.filter((o) => {
     const d = ymd(new Date(o.date));
-    const hay = `${o.id} ${o.name} ${o.phone} ${o.cEmail || ""} ${o.email} ${o.pay}`.toLowerCase();
+    const hay = `${o.id} ${o.name} ${o.phone} ${o.cEmail || ""} ${o.email} ${o.pay} ${o.payPhone || ""} ${o.payRef || ""}`.toLowerCase();
     return (!lo || (d >= lo && d <= hi))
       && (pay === "all" || (pay === "paid" ? isPaid(o) : o.status !== "Cancelled" && !isPaid(o)))
       && (!needle || hay.includes(needle) || hay.replace(/\s+/g, "").includes(tight));
@@ -372,7 +372,7 @@ function OrdersPage() {
       <div className="ptool">
         <label className="psearch">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Order, name or phone" aria-label="Search orders" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Order, name, phone or ref" aria-label="Search orders" />
         </label>
         <DateRange value={range} onChange={setRange} counts={days} />
         <Select className="pdate-sel" value={pay} onChange={(e) => setPay(e.target.value)} aria-label="Payment">
@@ -699,7 +699,7 @@ export function ReviewsAdmin() {
 }
 
 export function Messages() {
-  const { messages, setMessageRead, deleteMessage, ask } = useStore();
+  const { messages, setMessageRead, deleteMessage, ask, site } = useStore();
   const [f, setF] = useState("All");
   const [q, setQ] = useState("");
   const unread = messages.filter((m) => !m.read).length;
@@ -734,7 +734,7 @@ export function Messages() {
               <td className="nw">{tm(m.date)}</td>
               <td><span className={`pill ${m.read ? "off" : "warn"}`}>{m.read ? "Read" : "New"}</span></td>
               <td><div className="row mact">
-                <Button variant="o" size="s" href={`mailto:${m.email}?subject=${encodeURIComponent("Your message to DUCHI")}`} onClick={() => { if (!m.read) setMessageRead(m.id, true, true); }}>Reply</Button>
+                <Button variant="o" size="s" href={`mailto:${m.email}?subject=${encodeURIComponent(`Your message to ${site.short}`)}`} onClick={() => { if (!m.read) setMessageRead(m.id, true, true); }}>Reply</Button>
                 <Button variant="o" size="s" onClick={() => setMessageRead(m.id, !m.read)}>{m.read ? "Mark unread" : "Mark read"}</Button>
                 <Button variant="o" size="s" onClick={() => ask(`Delete the message from ${m.name}?`, () => deleteMessage(m.id), { yes: "Yes, delete" })}>Delete</Button>
               </div></td>

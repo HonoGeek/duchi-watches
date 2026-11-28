@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Img } from "./ui";
-import { IM } from "./data";
+import { IM, cardEnabled } from "./data";
 import { fmt } from "./lib";
+import { useStore } from "./store";
+import { useVideoUrl } from "./videoDb";
 import heroImg from "./images/hero.jpg";
 import "./hero.css";
 
@@ -18,17 +20,38 @@ const HERO_POS = "50% 60%";
 const mq = (q) => typeof window !== "undefined" && window.matchMedia(q).matches;
 const prefersReduced = () => mq("(prefers-reduced-motion: reduce)");
 
+// "Time, well kept." becomes the two lines "Time," and "well kept."; a headline without a comma is cut in the middle.
+const splitHeadline = (h) => {
+  const i = h.indexOf(",");
+  if (i > 0 && i < h.length - 1) return [h.slice(0, i + 1), h.slice(i + 1).trim()];
+  const w = h.split(" ");
+  if (w.length < 2) return [h, ""];
+  const m = Math.ceil(w.length / 2);
+  return [w.slice(0, m).join(" "), w.slice(m).join(" ")];
+};
+
 const Arrow = () => (
   <svg className="hx-arrow" viewBox="0 0 34 10" aria-hidden="true"><path d="M0 5h33M28.5 1 33 5l-4.5 4" /></svg>
 );
 
 export default function Hero({ minFee }) {
+  const { site } = useStore();
+  const hero = site.hero; // the headline, text and picture or video are set in Admin > Site settings
   const root = useRef(null);
+  const vid = useRef(null);
   const plate = useRef(null);
   const ph = useRef(null);
   const copy = useRef(null);
   const body = useRef(null);
   const [imgOk, setImgOk] = useState(true);
+  const [useDefault, setUseDefault] = useState(false); // the chosen photo would not load: the photo that comes with the shop is used
+  const [vidOk, setVidOk] = useState(true);
+  const [vidOn, setVidOn] = useState(false);
+  const stored = useVideoUrl(hero.type === "video" ? hero.video?.id : null); // an uploaded video is kept in this browser
+  const videoSrc = hero.type === "video" ? stored || hero.videoUrl || "" : "";
+  const still = (hero.type === "video" ? hero.video?.poster : "") || hero.image || HERO_IMG; // also shown while the video loads, and when motion is reduced
+  const src = useDefault ? HERO_IMG : still;
+  const showVideo = !!videoSrc && vidOk && !prefersReduced();
   // The sequence starts once the photograph AND the display font are ready, so the reveal
   // never plays on an empty frame and the headline never swaps fonts while it is rising.
   const [ready, setReady] = useState(prefersReduced);
@@ -52,6 +75,15 @@ export default function Hero({ minFee }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (!imgOk) setReady(true); }, [imgOk]);
+
+  // The video plays only while the hero is on screen, so it does not drain the battery further down the page.
+  useEffect(() => {
+    const el = root.current;
+    if (!el || !showVideo || typeof IntersectionObserver === "undefined") return undefined;
+    const io = new IntersectionObserver(([en]) => { const v = vid.current; if (!v) return; if (en.isIntersecting) v.play?.().catch(() => {}); else v.pause?.(); });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [showVideo]);
 
   // Pointer parallax (fine pointers only) + scroll dissolve.
   // Transforms are written straight to refs: no React re-renders, one rAF per change,
@@ -134,9 +166,13 @@ export default function Hero({ minFee }) {
       <div className="hx-plate" ref={plate} aria-hidden="true" style={{ "--hx-pos": HERO_POS }}>
         <div className="hx-ph" ref={ph}>
           {imgOk ? (
-            <img src={HERO_IMG} alt="" fetchPriority="high" decoding="async" onError={() => setImgOk(false)} />
+            <img key={src} src={src} alt="" fetchPriority="high" decoding="async" onError={() => (!useDefault && src !== HERO_IMG ? setUseDefault(true) : setImgOk(false))} />
           ) : (
             <Img id={IM[2]} alt="" w={2000} />
+          )}
+          {showVideo && (
+            <video ref={vid} className={vidOn ? "on" : ""} src={videoSrc} poster={src} autoPlay muted loop playsInline preload="auto"
+              onPlaying={() => setVidOn(true)} onError={() => setVidOk(false)} />
           )}
         </div>
         <div className="hx-glint" />
@@ -149,12 +185,12 @@ export default function Hero({ minFee }) {
         <div className="hx-copy" ref={copy}>
           {/* real text for assistive tech; the split lines below are the visual version */}
           <h1 className="hx-h1">
-            <span className="hx-sr">Time, well kept.</span>
-            <span className="hx-line" aria-hidden="true"><span style={{ "--i": 0 }}>Time,</span></span>
-            <span className="hx-line hx-em" aria-hidden="true"><span style={{ "--i": 1 }}>well kept.</span></span>
+            <span className="hx-sr">{hero.headline}</span>
+            <span className="hx-line" aria-hidden="true"><span style={{ "--i": 0 }}>{splitHeadline(hero.headline)[0]}</span></span>
+            {splitHeadline(hero.headline)[1] && <span className="hx-line hx-em" aria-hidden="true"><span style={{ "--i": 1 }}>{splitHeadline(hero.headline)[1]}</span></span>}
           </h1>
 
-          <p className="hx-lead hx-r">Discover watches that bring together timeless design, everyday comfort, and effortless style. Whether you're dressing for a special occasion or making every day count, find a timepiece that speaks to you.</p>
+          {hero.text && <p className="hx-lead hx-r">{hero.text}</p>}
 
           <div className="hx-cta hx-r">
             <Link className="hx-btn hx-pri" to="/shop"><span>Explore the collection</span><Arrow /></Link>
@@ -165,7 +201,7 @@ export default function Hero({ minFee }) {
         <div className="hx-bar hx-r">
           <div className="hx-facts">
             <div><b>Delivered across Rwanda</b><span>From {fmt(minFee)}</span></div>
-            <div><b>Pay your way</b><span>MTN MoMo, Airtel Money, card</span></div>
+            <div><b>Pay your way</b><span>{cardEnabled() ? "MTN MoMo, Airtel Money, card" : "MTN MoMo, Airtel Money, bank transfer"}</span></div>
             <div><b>Checked before dispatch</b><span>Every watch, every order</span></div>
           </div>
           <button type="button" className="hx-scroll" onClick={toNext}>

@@ -27,14 +27,14 @@ const CAT_DESC = {
 // FAQ answers come from Admin > Policies. A question whose policy is not written yet is hidden.
 
 export default function Home() {
-  const { products, zones, cats, policies } = useStore();
+  const { products, zones, cats, policies, site } = useStore();
   const live = products.filter((p) => p.active !== false);
   const fresh = [...live].sort(byNewest).slice(0, 6); // New arrivals: the 6 most recently added visible products
   const shownCats = cats.filter((c) => live.some((p) => p.c === c.name)); // empty categories stay hidden
   const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
   const zoneText = zones.map((z) => `${z.name} ${fmt(z.fee)}`).join(", ");
   const faq = [
-    ["Where does DUCHI deliver?", zoneText ? `We deliver across Rwanda with one flat fee per order: ${zoneText}.` : "We deliver across Rwanda. The delivery fee is shown at checkout."],
+    [`Where does ${site.short} deliver?`, zoneText ? `We deliver across Rwanda with one flat fee per order: ${zoneText}.` : "We deliver across Rwanda. The delivery fee is shown at checkout."],
     ["What payment methods do you accept?", cardEnabled() ? "MTN Mobile Money, Airtel Money, card or bank transfer." : "MTN Mobile Money, Airtel Money or bank transfer. Card payments are coming soon."],
     ["How can I place an order?", "Add your watches to the cart and enter your delivery details at checkout. We call you to confirm."],
     ["How long does delivery take?", policies.delivery.join(" ")],
@@ -53,7 +53,7 @@ export default function Home() {
       </div>
 
       <section><div className="wrap">
-        <Reveal className="head"><div className="sh"><h2 className="h2">Just Arrived</h2><p className="sub">Explore our latest collection of carefully selected timepieces. From modern everyday essentials to sophisticated statement pieces, discover the newest additions to DUCHI.</p></div><Button to="/shop" variant="o" size="s">View all watches</Button></Reveal>
+        <Reveal className="head"><div className="sh"><h2 className="h2">Just Arrived</h2><p className="sub">Explore our latest collection of carefully selected timepieces. From modern everyday essentials to sophisticated statement pieces, discover the newest additions to {site.short}.</p></div><Button to="/shop" variant="o" size="s">View all watches</Button></Reveal>
         <Reveal d={90}><HangingRail items={fresh} /></Reveal>
       </div></section>
 
@@ -92,8 +92,8 @@ export default function Home() {
 
       <section className="alt"><div className="wrap split" style={{ alignItems: "start" }}>
         <Reveal className="stack">
-          <h2 className="h2">The DUCHI Difference</h2>
-          <p className="sub">Buying a watch should feel as special as wearing one. At DUCHI, we focus on making your shopping experience simple, convenient, and dependable, from choosing your timepiece to receiving it at your doorstep.</p>
+          <h2 className="h2">The {site.short} Difference</h2>
+          <p className="sub">Buying a watch should feel as special as wearing one. At {site.short}, we focus on making your shopping experience simple, convenient, and dependable, from choosing your timepiece to receiving it at your doorstep.</p>
         </Reveal>
         <Reveal className="bn" d={120}>
           {DIFF.map(([ic, h, p]) => (

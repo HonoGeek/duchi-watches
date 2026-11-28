@@ -155,3 +155,17 @@
 }
 
 .db-ref{margin:-4px 0 4px;max-width:none}
+
+/* Site settings */
+.ss-logo{display:inline-flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;width:max-content;max-width:100%}
+.ss-logo .ax-name{display:inline-flex;align-items:baseline;gap:2px}
+.ss-media{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;align-items:center}
+.ss-th{aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:var(--soft);display:grid;place-items:center}
+.ss-th img{width:100%;height:100%;object-fit:cover;display:block}
+.ss-media>*{min-width:0}
+@media(max-width:700px){.ss-media{grid-template-columns:minmax(0,1fr)}.ss-th{max-width:min(320px,100%)}}
+.ss-media .btn{max-width:100%;white-space:normal;text-align:center}
+
+/* a longer short name must not crowd the sidebar: it is cut with an ellipsis */
+.ax-logo{min-width:0}
+.ax-name{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

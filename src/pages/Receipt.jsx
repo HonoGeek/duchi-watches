@@ -1,7 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useStore } from "../store";
 import { Button } from "../ui";
-import { SHOP } from "../data";
 import { dt, dtm, fmt } from "../lib";
 import "../receipt.css";
 
@@ -9,7 +8,7 @@ import "../receipt.css";
 // "Print or save as PDF" opens the browser's print window, where PDF can be chosen as the destination.
 export default function Receipt() {
   const { id } = useParams();
-  const { allOrders, user, adm, getProduct } = useStore();
+  const { allOrders, user, adm, getProduct, site } = useStore();
   const o = allOrders.find((x) => x.id === id);
   const mine = !!(o && user && o.email === user.email);
   if (!o || !(mine || adm)) return <Navigate to={adm ? "/admin/orders" : "/account/orders"} replace />;
@@ -26,8 +25,8 @@ export default function Receipt() {
       <article className="rp" aria-label={`Receipt for order ${o.id}`}>
         <div className="rp-head">
           <div>
-            <h1>{SHOP.name}</h1>
-            <p>{SHOP.place}<br />{SHOP.email}<br />{SHOP.phone}</p>
+            <h1>{site.name}</h1>
+            <p>{site.place}<br />{site.email}{site.phone && <><br />{site.phone}</>}</p>
           </div>
           <div className="rp-meta">
             <h2>{paid ? "Receipt" : "Order summary"}</h2>
@@ -63,7 +62,7 @@ export default function Receipt() {
           <p>{o.pay}, {(o.payStatus || "Pending").toLowerCase()}{o.payRef ? `. Reference ${o.payRef}` : ""}{o.card ? `. Card ending ${o.card.last4}` : ""}</p>
         </div>
 
-        <div className="rp-foot">Thank you for shopping with {SHOP.name}.</div>
+        <div className="rp-foot">Thank you for shopping with {site.name}.</div>
       </article>
     </div>
   );

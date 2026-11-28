@@ -83,13 +83,13 @@ export default function Help() {
 }
 
 // Terms of sale and privacy policy share one layout. Route: <Legal kind="terms" /> and <Legal kind="privacy" />.
-const LEGAL = {
-  terms: ["Terms of sale", "The conditions that apply when you buy from DUCHI."],
-  privacy: ["Privacy policy", "How DUCHI collects, uses and protects your information."],
-};
+const LEGAL = (brand) => ({
+  terms: ["Terms of sale", `The conditions that apply when you buy from ${brand}.`],
+  privacy: ["Privacy policy", `How ${brand} collects, uses and protects your information.`],
+});
 export function Legal({ kind }) {
-  const { policies } = useStore();
-  const [title, intro] = LEGAL[kind];
+  const { policies, site } = useStore();
+  const [title, intro] = LEGAL(site.short)[kind];
   const body = policies[kind];
   return (
     <section style={{ paddingTop: 56 }}><div className="wrap help-legal">

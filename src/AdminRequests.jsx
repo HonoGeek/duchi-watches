@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useStore } from "./store";
 import { isMomo, refundDue, restockDue } from "./orderState";
 import { Button, Field, Input, Panel, Textarea } from "./ui";
@@ -50,6 +49,7 @@ function ReturnPanel({ o }) {
   const [text, setText] = useState("");
   const [amount, setAmount] = useState(String(o.total));
   const [how, setHow] = useState("");
+  const [restock, setRestock] = useState(true);
   return (
     <Panel className="sm" style={{ marginBottom: 16 }}>
       <div className="head" style={{ marginBottom: 8, alignItems: "center" }}><b style={{ fontWeight: 500 }}>Return request</b><Pill s={rr.status} /></div>
@@ -67,13 +67,16 @@ function ReturnPanel({ o }) {
         </form>
       )}
       {rr.status === "approved" && (
-        <form className="stack" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); answerReturn(o.id, "refunded", { amount, method: how }); }}>
+        <form className="stack" style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); answerReturn(o.id, "refunded", { amount, method: how, restock }); }}>
           {rr.answer && <Row k="Your message">{rr.answer}</Row>}
-          <p className="mute" style={{ margin: 0 }}>Send the money back by MoMo or bank transfer first, then record it here. Recording a refund does not send any money.</p>
+          <p className="mute" style={{ margin: 0 }}>Send the money back by MoMo or bank transfer first, then record it here. Recording a refund does not send any money. It comes off your revenue, and the watches go back into stock.</p>
           <div className="two">
             <Field label="Refund (RWF)"><Input type="number" inputMode="numeric" min="1" max={o.total} step="1" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
             <Field label="How it was sent (optional)"><Input maxLength={100} placeholder="e.g. MTN MoMo to 0788 123 456" value={how} onChange={(e) => setHow(e.target.value)} /></Field>
           </div>
+          {!rr.restock && (
+            <label className="fchk"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /><span>Put the returned watches back in stock (untick if damaged)</span></label>
+          )}
           <div><Button size="s">Record refund</Button></div>
         </form>
       )}
@@ -134,7 +137,7 @@ export function StockPanel({ o }) {
           return (
             <li key={x.id}>
               <span>{name} × {x.q}</span>
-              <span className="mute">{p ? <>In stock now: <b style={{ fontWeight: 500 }}>{p.stock}</b> · <Link className="lnk" to={`/admin/products?q=${encodeURIComponent(p.n)}`}>Adjust stock</Link></> : "Product removed"}</span>
+              <span className="mute">{p ? <>In stock now: <b style={{ fontWeight: 500 }}>{p.stock}</b></> : "Product removed"}</span>
             </li>
           );
         })}
@@ -143,7 +146,7 @@ export function StockPanel({ o }) {
       {rr?.restock === "no" && <p className="mute" style={{ margin: 0 }}>The returned watches were not added back to the stock (not for resale), decided on {dt(rr.restockedAt)}.</p>}
       {due && (
         <>
-          <p className="mute" style={{ margin: "0 0 10px" }}>The customer is returning these watches. When you have them, decide whether they go back on sale. A damaged watch should not.</p>
+          <p className="mute" style={{ margin: "0 0 10px" }}>The customer is returning these watches. When you record their refund the watches go back into stock by themselves. If you give a replacement instead of a refund, or the watch is damaged, decide here.</p>
           <div className="row">
             <Button size="s" onClick={() => ask(`Add ${sum} back into the stock?`, () => restockReturn(o.id, true), { yes: "Yes, add to stock", no: "No" })}>Put back in stock</Button>
             <Button variant="o" size="s" onClick={() => ask("Keep the returned watches out of the stock (damaged or not for resale)?", () => restockReturn(o.id, false), { yes: "Yes, do not restock", no: "No" })}>Do not restock</Button>

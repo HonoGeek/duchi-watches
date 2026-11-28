@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useStore } from "../store";
 import { Button, Field, Input, Panel, Textarea } from "../ui";
 import { isEmail, isName, isPhone } from "../lib";
-import { SHOP } from "../data";
 
 const MAX = 1000;
 
 export default function Contact() {
-  const { addMessage } = useStore();
+  const { addMessage, site } = useStore();
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState({});
   const [len, setLen] = useState(0);
@@ -35,9 +34,9 @@ export default function Contact() {
         <h1 className="h2">How can we help?</h1>
         <p className="lead">Questions about a watch, delivery or payment? Send us a message and we will reply quickly.</p>
         <Panel className="stack sm">
-          <div><b>WhatsApp</b><div className="mute">{SHOP.phone}</div></div>
-          <div><b>Email</b><div className="mute">{SHOP.email}</div></div>
-          <div><b>Location</b><div className="mute">{SHOP.place}</div></div>
+          {site.phone && <div><b>WhatsApp</b><div className="mute">{site.phone}</div></div>}
+          <div><b>Email</b><div className="mute">{site.email}</div></div>
+          <div><b>Location</b><div className="mute">{site.place}</div></div>
         </Panel>
       </div>
       {sent ? (

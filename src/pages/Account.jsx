@@ -17,11 +17,11 @@ const PAGE_SIZE = { orders: 6, wishlist: 6 };
 
 // Signed out: a sign-in page inside the shop layout. Signed in: the dashboard (see AccountShell.jsx).
 export default function Account() {
-  const { user } = useStore();
+  const { user, site } = useStore();
   if (!user) {
     return (
       <section style={{ paddingTop: 56 }}><div className="wrap" style={{ maxWidth: 440 }}>
-        <h1 className="h2" style={{ marginBottom: 24 }}>Welcome to DUCHI</h1>
+        <h1 className="h2" style={{ marginBottom: 24 }}>Welcome to {site.short}</h1>
         <AuthBox />
       </div></section>
     );
@@ -253,14 +253,14 @@ export function OrderDetail() {
 
 // Every message from the shop about the customer's orders, in full: dispatched, delivered, cancelled, answers to requests, refunds.
 export function Notifications() {
-  const { myNotifs, readNotif, readAllNotifs } = useStore();
+  const { myNotifs, readNotif, readAllNotifs, site } = useStore();
   const [f, setF] = useState("all");
   const unread = myNotifs.filter((n) => !n.read).length;
   const list = myNotifs.filter((n) => f === "all" || !n.read);
   const pg = usePaged(list, 8, f);
   return (
     <>
-      <PageHead title="Notifications" sub={myNotifs.length ? `${myNotifs.length} ${myNotifs.length === 1 ? "message" : "messages"} from DUCHI about your orders${unread ? `, ${unread} not read yet` : ""}.` : "Messages about your orders will show here."}
+      <PageHead title="Notifications" sub={myNotifs.length ? `${myNotifs.length} ${myNotifs.length === 1 ? "message" : "messages"} from ${site.short} about your orders${unread ? `, ${unread} not read yet` : ""}.` : "Messages about your orders will show here."}
         actions={unread > 0 && <Button size="s" variant="o" onClick={readAllNotifs}>Mark all as read</Button>} />
       {myNotifs.length > 0 && (
         <div className="row ofilters" role="group" aria-label="Filter notifications">

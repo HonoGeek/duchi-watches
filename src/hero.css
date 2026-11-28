@@ -54,6 +54,9 @@
   filter:brightness(.95) contrast(1.05) saturate(.85);
   opacity:0;transform:scale(1.06) translate3d(0,2.5%,0)
 }
+/* a video sits on top of the still picture and fades in once it plays */
+.hx-ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hx-pos,50% 60%);filter:brightness(.95) contrast(1.05) saturate(.85);opacity:0;transition:opacity 1s ease}
+.hx-ph video.on{opacity:1}
 /* opacity and settle run on their own clocks: a slow fade, and a longer rise into place */
 .is-in .hx-ph img{
   animation:hx-plate-fade 2.6s var(--hx-fade) .15s both,hx-plate-settle 3.6s var(--hx-ease) .15s both

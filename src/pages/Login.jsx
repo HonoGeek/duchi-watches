@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { Button, Chip, Field, Input } from "../ui";
 import { isEmail, isName, isPhone } from "../lib";
@@ -62,9 +62,11 @@ export function AuthBox({ onDone }) {
 
 export default function Login() {
   const nav = useNavigate();
+  const { user, site } = useStore();
+  if (user) return <Navigate to="/account" replace />;
   return (
     <section style={{ paddingTop: 56 }}><div className="wrap" style={{ maxWidth: 440 }}>
-      <h1 className="h2" style={{ marginBottom: 24 }}>Welcome to DUCHI</h1>
+      <h1 className="h2" style={{ marginBottom: 24 }}>Welcome to {site.short}</h1>
       <AuthBox onDone={() => nav("/account")} />
     </div></section>
   );
